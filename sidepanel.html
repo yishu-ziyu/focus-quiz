@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Focus Quiz</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 16px; background: #fff; color: #18181b; min-width: 300px; }
+
+    /* Header */
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+    h1 { font-size: 18px; font-weight: 600; margin: 0; }
+    .header-actions { display: flex; gap: 4px; align-items: center; }
+    .icon-btn { background: none; border: none; font-size: 16px; cursor: pointer; padding: 4px; border-radius: 4px; line-height: 1; }
+    .icon-btn:hover { background: #f4f4f5; }
+
+    /* Streak Badge */
+    .streak-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: #92400e; background: #fef3c7; padding: 3px 8px; border-radius: 10px; margin-bottom: 12px; }
+    .streak-badge.cold { color: #71717a; background: #f4f4f5; }
+
+    .subtitle { font-size: 12px; color: #71717a; margin-bottom: 12px; font-style: italic; }
+    .tip { font-size: 13px; color: #71717a; margin-bottom: 16px; }
+    .card { border: 1px solid #e4e4e7; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+    .selected { background: #f4f4f5; border-radius: 6px; padding: 12px; font-size: 12px; color: #52525b; margin-bottom: 16px; line-height: 1.5; }
+
+    /* Loading with quotes */
+    .loading { text-align: center; padding: 32px; }
+    .spinner { width: 24px; height: 24px; border: 2px solid #e4e4e7; border-top-color: #18181b; border-radius: 50%; animation: spin 1s linear infinite; display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-quote { margin-top: 12px; font-size: 13px; color: #71717a; font-style: italic; min-height: 20px; transition: opacity 0.3s ease; }
+
+    .error { background: #fef2f2; color: #b91c1c; padding: 12px; border-radius: 6px; font-size: 13px; margin-bottom: 16px; }
+
+    /* Question styling */
+    .question { margin-bottom: 16px; animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .q-type { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; padding: 4px 8px; border-radius: 4px; display: inline-block; }
+    .q-type.trap { background: #fef3c7; color: #92400e; }
+    .q-type.counterfactual { background: #dbeafe; color: #1e40af; }
+    .q-type.transfer { background: #d1fae5; color: #065f46; }
+    .q-text { font-size: 14px; font-weight: 500; margin-bottom: 12px; line-height: 1.5; }
+
+    /* Options with animations */
+    .option { display: block; width: 100%; text-align: left; padding: 10px 12px; border: 1px solid #e4e4e7; border-radius: 6px; font-size: 13px; background: #fff; cursor: pointer; margin-bottom: 8px; line-height: 1.4; transition: all 0.2s ease; }
+    .option:hover { background: #f4f4f5; transform: translateX(2px); }
+    .option.correct { background: #18181b; color: #fff; border-color: #18181b; animation: correctPop 0.4s ease; }
+    @keyframes correctPop { 0% { transform: scale(1); } 50% { transform: scale(1.02) translateY(-2px); } 100% { transform: scale(1); } }
+    .option.wrong { background: #fef2f2; color: #b91c1c; border-color: #fecaca; text-decoration: line-through; animation: shake 0.4s ease; }
+    @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+    .option.disabled { cursor: default; }
+    .option.disabled:hover { background: inherit; transform: none; }
+
+    /* Explanation with slide-in */
+    .explain { margin-top: 12px; padding: 12px; background: #fef3c7; border-left: 3px solid #f59e0b; font-size: 12px; color: #78350f; line-height: 1.5; animation: slideDown 0.3s ease; }
+    .explain.correct-exp { background: #d1fae5; border-left-color: #10b981; color: #065f46; }
+    @keyframes slideDown { from { opacity: 0; max-height: 0; padding: 0 12px; } to { opacity: 1; max-height: 200px; padding: 12px; } }
+
+    /* Share button */
+    .share-btn { display: inline-block; margin-top: 8px; padding: 4px 10px; font-size: 11px; background: #f4f4f5; border: 1px solid #e4e4e7; border-radius: 4px; cursor: pointer; color: #52525b; transition: all 0.2s; }
+    .share-btn:hover { background: #e4e4e7; }
+    .share-btn.copied { background: #d1fae5; border-color: #10b981; color: #065f46; }
+
+    /* Mistake Log View */
+    .mistake-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .mistake-header h2 { font-size: 16px; font-weight: 600; }
+    .back-btn { font-size: 13px; color: #71717a; cursor: pointer; background: none; border: none; text-decoration: underline; }
+    .back-btn:hover { color: #18181b; }
+    .mistake-item { border: 1px solid #e4e4e7; border-radius: 8px; padding: 12px; margin-bottom: 12px; }
+    .mistake-item .q-text { font-size: 13px; margin-bottom: 8px; }
+    .mistake-meta { font-size: 11px; color: #a1a1aa; margin-bottom: 6px; }
+    .mistake-your-answer { font-size: 12px; color: #b91c1c; margin-bottom: 4px; }
+    .mistake-correct-answer { font-size: 12px; color: #065f46; margin-bottom: 8px; }
+    .mistake-explain { font-size: 12px; color: #78350f; background: #fef3c7; padding: 8px; border-radius: 4px; line-height: 1.4; }
+    .empty-state { text-align: center; padding: 32px; color: #a1a1aa; font-size: 13px; }
+
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <!-- Main Quiz View -->
+  <div id="mainView">
+    <div class="header">
+      <h1>🎯 Focus Quiz</h1>
+      <div class="header-actions">
+        <button id="openMistakes" class="icon-btn" title="错题本">📓</button>
+        <button id="openSettings" class="icon-btn" title="API Settings">⚙️</button>
+      </div>
+    </div>
+    <div id="streakBadge" class="streak-badge cold">🔥 Day 0</div>
+    <p class="subtitle">The Inquisitor · 深度压力测试</p>
+    <p class="tip">选中网页文字 → 右键 → Generate Quiz</p>
+
+    <div id="selectedText" class="selected hidden"></div>
+
+    <div id="loading" class="loading hidden">
+      <div class="spinner"></div>
+      <p id="loadingQuote" class="loading-quote"></p>
+    </div>
+
+    <div id="error" class="error hidden"></div>
+
+    <div id="quiz"></div>
+  </div>
+
+  <!-- Mistake Log View -->
+  <div id="mistakeView" class="hidden">
+    <div class="mistake-header">
+      <h2>📓 思维断裂档案</h2>
+      <button id="backToQuiz" class="back-btn">← 返回</button>
+    </div>
+    <div id="mistakeList"></div>
+  </div>
+
+  <script src="providers.js"></script>
+  <script src="sidepanel.js"></script>
+</body>
+</html>

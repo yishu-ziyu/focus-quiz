@@ -6,8 +6,14 @@ log_file="$repo_root/DEVELOPMENT_LOG.md"
 today="$(date +%Y-%m-%d)"
 now="$(date '+%Y-%m-%d %H:%M:%S %z')"
 status_short="$(git status --short)"
-current_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo 'unborn')"
-last_commit="$(git log -1 --pretty='%h %s' 2>/dev/null || echo 'no commits yet')"
+
+if git rev-parse --verify HEAD >/dev/null 2>&1; then
+  current_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo 'detached')"
+  last_commit="$(git log -1 --pretty='%h %s')"
+else
+  current_branch="unborn"
+  last_commit="no commits yet"
+fi
 
 if [[ ! -f "$log_file" ]]; then
   cat > "$log_file" <<'LOGHDR'

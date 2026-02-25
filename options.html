@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Focus Quiz - Settings</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      padding: 24px;
+      max-width: 500px;
+      margin: 0 auto;
+      color: #18181b;
+      background: #fafafa;
+    }
+    .card {
+      background: white;
+      border: 1px solid #e4e4e7;
+      border-radius: 8px;
+      padding: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    h1 { font-size: 20px; margin-bottom: 4px; font-weight: 600; }
+    p.desc { font-size: 13px; color: #71717a; margin-bottom: 20px; line-height: 1.5; }
+    label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; color: #3f3f46; }
+    select, input[type="text"], input[type="password"] {
+      width: 100%; padding: 9px 12px; border: 1px solid #d4d4d8; border-radius: 6px;
+      font-size: 13px; box-sizing: border-box; margin-bottom: 14px; font-family: inherit;
+    }
+    input[type="password"] { font-family: monospace; }
+    select:focus, input:focus { outline: none; border-color: #18181b; box-shadow: 0 0 0 1px #18181b; }
+    .optgroup-label { font-weight: 600; color: #71717a; }
+    button.save {
+      background: #18181b; color: white; border: none; padding: 10px 16px;
+      border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; width: 100%;
+    }
+    button.save:hover { background: #27272a; }
+    #status { margin-top: 12px; font-size: 12px; text-align: center; min-height: 18px; }
+    .status-ok { color: #10b981; }
+    .status-err { color: #ef4444; }
+    .provider-section { margin-bottom: 16px; }
+    .hint { font-size: 11px; color: #a1a1aa; margin-top: -10px; margin-bottom: 14px; }
+    .divider { border: none; border-top: 1px solid #e4e4e7; margin: 16px 0; }
+    .provider-badge {
+      display: inline-block; font-size: 11px; padding: 2px 8px;
+      border-radius: 10px; margin-bottom: 12px; font-weight: 500;
+    }
+    .badge-global { background: #dbeafe; color: #1e40af; }
+    .badge-cn { background: #fef3c7; color: #92400e; }
+    .badge-local { background: #d1fae5; color: #065f46; }
+    .security-note { margin-top: 16px; font-size: 11px; color: #a1a1aa; text-align: center; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h1>⚙️ Settings</h1>
+    <p class="desc">选择你的 AI Provider 并配置密钥。国内厂商全部兼容 OpenAI 格式，换个 Key 即用。</p>
+
+    <!-- Provider 选择 -->
+    <div class="provider-section">
+      <label for="providerSelect">AI Provider</label>
+      <select id="providerSelect">
+        <optgroup label="🌐 海外">
+          <option value="gemini">Google Gemini</option>
+          <option value="openai">OpenAI</option>
+          <option value="anthropic">Anthropic (Claude)</option>
+        </optgroup>
+        <optgroup label="🇨🇳 国内">
+          <option value="deepseek">DeepSeek (深度求索)</option>
+          <option value="zhipu">智谱AI (GLM)</option>
+          <option value="minimax">MiniMax (稀宇)</option>
+          <option value="qwen">通义千问 (Qwen)</option>
+        </optgroup>
+        <optgroup label="🏠 本地">
+          <option value="ollama">Ollama (本地部署)</option>
+        </optgroup>
+      </select>
+    </div>
+
+    <hr class="divider">
+
+    <!-- ============ 海外 ============ -->
+
+    <!-- Gemini -->
+    <div id="config-gemini" class="provider-config">
+      <span class="provider-badge badge-global">🌐 Cloud</span>
+      <label for="gemini-apiKey">API Key</label>
+      <input type="password" id="gemini-apiKey" placeholder="AIzaSy..." autocomplete="off" spellcheck="false">
+      <label for="gemini-model">Model</label>
+      <select id="gemini-model">
+        <option value="gemini-2.5-flash-preview">Gemini 2.5 Flash (快速)</option>
+        <option value="gemini-2.5-pro-preview">Gemini 2.5 Pro (质量)</option>
+      </select>
+    </div>
+
+    <!-- OpenAI -->
+    <div id="config-openai" class="provider-config hidden">
+      <span class="provider-badge badge-global">🌐 Cloud</span>
+      <label for="openai-apiKey">API Key</label>
+      <input type="password" id="openai-apiKey" placeholder="sk-..." autocomplete="off" spellcheck="false">
+      <label for="openai-model">Model</label>
+      <select id="openai-model">
+        <option value="gpt-4o-mini">GPT-4o Mini (快速)</option>
+        <option value="gpt-4o">GPT-4o (质量)</option>
+        <option value="gpt-4.1-mini">GPT-4.1 Mini</option>
+        <option value="gpt-4.1-nano">GPT-4.1 Nano (极速)</option>
+      </select>
+    </div>
+
+    <!-- Anthropic -->
+    <div id="config-anthropic" class="provider-config hidden">
+      <span class="provider-badge badge-global">🌐 Cloud</span>
+      <label for="anthropic-apiKey">API Key</label>
+      <input type="password" id="anthropic-apiKey" placeholder="sk-ant-..." autocomplete="off" spellcheck="false">
+      <label for="anthropic-model">Model</label>
+      <select id="anthropic-model">
+        <option value="claude-sonnet-4-20250514">Claude Sonnet 4 (推荐)</option>
+        <option value="claude-haiku-4-20250514">Claude Haiku 4 (快速)</option>
+      </select>
+    </div>
+
+    <!-- ============ 国内 ============ -->
+
+    <!-- DeepSeek -->
+    <div id="config-deepseek" class="provider-config hidden">
+      <span class="provider-badge badge-cn">🇨🇳 国内直连</span>
+      <label for="deepseek-apiKey">API Key</label>
+      <input type="password" id="deepseek-apiKey" placeholder="sk-..." autocomplete="off" spellcheck="false">
+      <p class="hint">在 <a href="https://platform.deepseek.com/api_keys" target="_blank">platform.deepseek.com</a> 获取</p>
+      <label for="deepseek-model">Model</label>
+      <select id="deepseek-model">
+        <option value="deepseek-chat">DeepSeek-V3 Chat (通用)</option>
+        <option value="deepseek-reasoner">DeepSeek-R1 Reasoner (推理)</option>
+      </select>
+    </div>
+
+    <!-- 智谱AI -->
+    <div id="config-zhipu" class="provider-config hidden">
+      <span class="provider-badge badge-cn">🇨🇳 国内直连</span>
+      <label for="zhipu-apiKey">API Key</label>
+      <input type="password" id="zhipu-apiKey" placeholder="API Key..." autocomplete="off" spellcheck="false">
+      <p class="hint">在 <a href="https://open.bigmodel.cn/usercenter/apikeys" target="_blank">open.bigmodel.cn</a> 获取</p>
+      <label for="zhipu-model">Model</label>
+      <select id="zhipu-model">
+        <option value="glm-4-flash">GLM-4 Flash (免费/快速)</option>
+        <option value="glm-4-plus">GLM-4 Plus (质量)</option>
+        <option value="glm-4-long">GLM-4 Long (长文本)</option>
+      </select>
+    </div>
+
+    <!-- MiniMax -->
+    <div id="config-minimax" class="provider-config hidden">
+      <span class="provider-badge badge-cn">🇨🇳 国内直连</span>
+      <label for="minimax-apiKey">API Key</label>
+      <input type="password" id="minimax-apiKey" placeholder="API Key..." autocomplete="off" spellcheck="false">
+      <p class="hint">在 <a href="https://platform.minimaxi.com/user-center/basic-information/interface-key" target="_blank">platform.minimaxi.com</a> 获取</p>
+      <label for="minimax-model">Model</label>
+      <select id="minimax-model">
+        <option value="MiniMax-M1-80k">MiniMax-M1 (推荐)</option>
+      </select>
+    </div>
+
+    <!-- 通义千问 -->
+    <div id="config-qwen" class="provider-config hidden">
+      <span class="provider-badge badge-cn">🇨🇳 国内直连</span>
+      <label for="qwen-apiKey">API Key</label>
+      <input type="password" id="qwen-apiKey" placeholder="sk-..." autocomplete="off" spellcheck="false">
+      <p class="hint">在 <a href="https://bailian.console.aliyun.com/#/model-market" target="_blank">阿里云百炼平台</a> 获取</p>
+      <label for="qwen-model">Model</label>
+      <select id="qwen-model">
+        <option value="qwen-turbo">Qwen Turbo (快速/便宜)</option>
+        <option value="qwen-plus">Qwen Plus (推荐)</option>
+        <option value="qwen-max">Qwen Max (旗舰)</option>
+      </select>
+    </div>
+
+    <!-- ============ 本地 ============ -->
+
+    <!-- Ollama -->
+    <div id="config-ollama" class="provider-config hidden">
+      <span class="provider-badge badge-local">🏠 Local</span>
+      <label for="ollama-endpoint">服务地址</label>
+      <input type="text" id="ollama-endpoint" placeholder="http://localhost:11434" value="http://localhost:11434">
+      <p class="hint">只填服务根地址（不要填 <code>/api/chat</code> 或 <code>/v1/chat/completions</code>），并确保已运行 <code>ollama serve</code></p>
+      <label for="ollama-model">模型名称</label>
+      <input type="text" id="ollama-model" placeholder="qwen3:8b">
+      <p class="hint">输入你已 pull 的模型名，如 qwen3:8b, llama3.1, mistral；若不存在请先执行 <code>ollama pull 模型名</code></p>
+      <p class="hint">若报 <code>HTTP 403</code>，通常是 Ollama 拒绝浏览器扩展来源；需配置 <code>OLLAMA_ORIGINS</code> 后重启服务。</p>
+    </div>
+
+    <button class="save" id="saveBtn">保存配置</button>
+    <div id="status"></div>
+
+    <div class="security-note">
+      所有配置仅存储在浏览器本地 (chrome.storage.local)，不会上传任何服务器。
+    </div>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>

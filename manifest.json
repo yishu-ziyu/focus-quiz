@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "Focus Quiz",
+  "version": "1.0",
+  "description": "Generate quizzes from selected text",
+  "permissions": ["sidePanel", "contextMenus", "storage", "activeTab"],
+  "host_permissions": [
+    "http://127.0.0.1/*",
+    "http://localhost/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Open Focus Quiz"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "icons": {
+    "48": "icon48.png"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": false
+  }
+}

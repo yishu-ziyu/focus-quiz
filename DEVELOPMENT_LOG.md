@@ -75,3 +75,17 @@ unborn
   - Files:
     - .githooks/post-commit
     - DEVELOPMENT_LOG.md
+
+- [de8c777] chore: keep development log synced within each commit
+  - Time: 2026-02-25 13:38:38 +0800
+  - Stats: 2 files changed, 40 insertions(+)
+  - Files:
+    - .githooks/post-commit
+    - DEVELOPMENT_LOG.md
+
+- [e2fdbb4] chore: stabilize post-commit development log sync
+  - Time: 2026-02-25 13:40:24 +0800
+  - Stats: 2 files changed, 15 insertions(+), 5 deletions(-)
+  - Files:
+    - .githooks/post-commit
+    - DEVELOPMENT_LOG.md

@@ -2,11 +2,14 @@
 set -euo pipefail
 
 repo_root="$(git rev-parse --show-toplevel)"
+
+if [[ "${DEVLOG_POST_COMMIT_AMEND:-0}" == "1" ]]; then
+  exit 0
+fi
+
 "$repo_root/scripts/devlog_append.sh"
 
-if [[ "${DEVLOG_POST_COMMIT_AMEND:-0}" != "1" ]]; then
-  git add "$repo_root/DEVELOPMENT_LOG.md"
-  if ! git diff --cached --quiet -- "$repo_root/DEVELOPMENT_LOG.md"; then
-    DEVLOG_POST_COMMIT_AMEND=1 git commit --amend --no-edit --no-verify >/dev/null
-  fi
+git add "$repo_root/DEVELOPMENT_LOG.md"
+if ! git diff --cached --quiet -- "$repo_root/DEVELOPMENT_LOG.md"; then
+  DEVLOG_POST_COMMIT_AMEND=1 git commit --amend --no-edit --no-verify >/dev/null
 fi

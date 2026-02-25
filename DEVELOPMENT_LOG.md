@@ -89,3 +89,10 @@ unborn
   - Files:
     - .githooks/post-commit
     - DEVELOPMENT_LOG.md
+
+- [8134d82] chore: add daily development log review helper
+  - Time: 2026-02-25 13:42:35 +0800
+  - Stats: 2 files changed, 18 insertions(+)
+  - Files:
+    - README.md
+    - scripts/devlog_today.sh

@@ -16,6 +16,7 @@ This project keeps a running development log in `DEVELOPMENT_LOG.md`.
 
 - Auto append on each commit: `.githooks/post-commit`
 - Manual snapshot: `./scripts/devlog_sync.sh`
+- Show today's entries: `./scripts/devlog_today.sh`
 
 Hook setup (already configured in this repo):
 

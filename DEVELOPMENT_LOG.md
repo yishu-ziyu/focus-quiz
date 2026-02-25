@@ -55,22 +55,29 @@ Auto-updated by git hooks. Each commit appends an entry under the corresponding 
     - .githooks/post-commit
     - DEVELOPMENT_LOG.md
 
-- [e2fdbb4] chore: stabilize post-commit development log sync
+- [6b9608e] chore: stabilize post-commit development log sync
   - Time: 2026-02-25 13:40:24 +0800
   - Stats: 2 files changed, 15 insertions(+), 5 deletions(-)
   - Files:
     - .githooks/post-commit
     - DEVELOPMENT_LOG.md
 
-- [8134d82] chore: add daily development log review helper
+- [febb65b] chore: add daily development log review helper
   - Time: 2026-02-25 13:42:35 +0800
   - Stats: 2 files changed, 18 insertions(+)
   - Files:
     - README.md
     - scripts/devlog_today.sh
 
-- [a26f065] chore: clean bootstrap entries in development log
+- [e711b24] chore: clean bootstrap entries in development log
   - Time: 2026-02-25 13:43:57 +0800
   - Stats: 1 file changed, 28 deletions(-)
   - Files:
     - DEVELOPMENT_LOG.md
+
+- Commit: chore: make devlog entries stable under auto-amend
+  - Time: 2026-02-25 13:45:31 +0800
+  - Stats: 2 files changed, 4 insertions(+), 5 deletions(-)
+  - Files:
+    - DEVELOPMENT_LOG.md
+    - scripts/devlog_append.sh

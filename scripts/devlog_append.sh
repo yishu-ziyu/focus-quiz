@@ -3,7 +3,6 @@ set -euo pipefail
 
 repo_root="$(git rev-parse --show-toplevel)"
 log_file="$repo_root/DEVELOPMENT_LOG.md"
-commit_hash="$(git rev-parse --short HEAD)"
 commit_subject="$(git log -1 --pretty=%s)"
 commit_time="$(git log -1 --date=iso-local --pretty=%ad)"
 changed_files="$(git show --pretty='' --name-only HEAD | sed '/^$/d')"
@@ -27,7 +26,7 @@ fi
 
 {
   echo
-  echo "- [${commit_hash}] ${commit_subject}"
+  echo "- Commit: ${commit_subject}"
   echo "  - Time: ${commit_time}"
   if [[ -n "$summary_line" ]]; then
     echo "  - Stats: ${summary_line}"

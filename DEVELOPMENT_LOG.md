@@ -81,3 +81,9 @@ Auto-updated by git hooks. Each commit appends an entry under the corresponding 
   - Files:
     - DEVELOPMENT_LOG.md
     - scripts/devlog_append.sh
+
+- Commit: docs: Rewrite README with PM-driven product positioning and multi-model support details
+  - Time: 2026-02-25 13:55:07 +0800
+  - Stats: 1 file changed, 70 insertions(+), 19 deletions(-)
+  - Files:
+    - README.md

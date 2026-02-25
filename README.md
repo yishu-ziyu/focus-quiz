@@ -1,29 +1,80 @@
-# Focus Quiz (Optimized)
+<div align="center">
 
-Chrome extension that generates high-pressure comprehension quizzes from selected text.
+# 🎯 Focus Quiz
 
-## Provider support
+**不要复述，直面审问。**
+**一款基于大语言模型的“认知压力测试” Chrome 扩展。**
 
-- Google Gemini
-- OpenAI
-- Anthropic
-- DeepSeek / Zhipu / MiniMax / Qwen (OpenAI-compatible)
-- Ollama (local)
+[安装指南](#-安装指南) • [核心逻辑](#-为什么需要-focus-quiz) • [支持模型](#-支持-8-大-ai-全平台)
 
-## Development log workflow
+</div>
 
-This project keeps a running development log in `DEVELOPMENT_LOG.md`.
+---
 
-- Auto append on each commit: `.githooks/post-commit`
-- Manual snapshot: `./scripts/devlog_sync.sh`
-- Show today's entries: `./scripts/devlog_today.sh`
+## 💡 为什么需要 Focus Quiz？
 
-Hook setup (already configured in this repo):
+我们在阅读网页文章时，常常有一种错觉：“我看懂了”。
+但真正的理解，是能够经受住**第一性原理**的盘问。
 
-```bash
-git config --local core.hooksPath .githooks
-```
+Focus Quiz **不是**一个帮你总结文章的扩展，也不是一个仅仅提取名词解释的工具。它是一位极其严苛的学术导师（The Inquisitor）。它的目标是**粉碎**你脑中那些似是而非的表层认知。
 
-## Local Ollama note
+当你在网页上划选一段自认为“看懂了”的文字，右键唤出 Focus Quiz 时，它会立刻向你发射三类“灵魂拷问”：
 
-If `localhost:11434` returns `403` from browser extension requests, run an Ollama service with allowed origins and point the extension endpoint to that host/port.
+1. 🪤 **概念陷阱 (Trap)**：通过合理的错误归因和常见望文生义，测试你是否真正掌握了概念边界。
+2. 🔄 **反事实推演 (Counterfactual)**：如果文中的关键条件发生逆转，结论会如何推演？（考察动态关系而非静态事实）。
+3. 🌌 **场景迁移 (Transfer)**：将这段逻辑强行剥离当前语境，扔进一个完全陌生的领域，要求你重新推导。
+
+---
+
+## ✨ 核心产品特性
+
+除了硬核的拷问逻辑，Focus Quiz 在交互层面融入了多项产品心理学设计：
+
+- 🔥 **保留连续学习天数 (Streak)**：引入“损失厌恶”机制，侧边栏顶部实时展示连续打卡天数，一天不测，徽章熄灭重置为 0。
+- 📓 **本地错题本沉淀**：你所有的“思维断裂点”都会被系统无情记录。点击侧边栏的笔记本图标 📓，随时回顾你跌落过的认知陷阱。
+- 📤 **分享“破防”时刻**：答错一题？没关系，一键复制这道极具迷惑性的题目和犀利无情的解析，发给朋友看看他们会不会中招。
+- 💬 **沉浸式审问体验**：在等待大模型生成题目时，拒绝无聊的转圈动画，而是轮播 8 条极客范儿的“审问警告语录”，拉满期待值。
+
+---
+
+## 🤖 支持 8 大 AI 全平台
+
+完全采用 **BYOK (Bring Your Own Key)** 模式，你的密钥仅保存在浏览器的本地存储中，绝不上伟。
+目前已完美支持以下 8 大 AI 厂商的 API 直连：
+
+### 🌐 海外大厂
+
+- **Google Gemini** (推荐 Gemini 2.5 Flash / Pro)
+- **OpenAI** (支持 GPT-4o 及各类变种)
+- **Anthropic** (支持 Claude 3.5 Sonnet / Haiku)
+
+### 🇨🇳 国内直连 (原生兼容)
+
+完美兼容国内主流厂商的 OpenAI-Compatible 接口，无需繁琐配置，填入他们的 API Key 即可丝滑使用：
+
+- **DeepSeek (深度求索)** (V3 Chat / R1 Reasoner)
+- **智谱AI (GLM)** (GLM-4 系列)
+- **MiniMax (稀宇)** (M1-80k 等)
+- **通义千问 (Qwen)** (Turbo / Plus / Max)
+
+### 🏠 本地离线部署
+
+- **Ollama**：填入你跑在本地的端口（通常为 `http://localhost:11434`）及已拉取的本地权重名称（如 `gemma3:4b`, `qwen3:8b`），实现**零成本、完全隐私、极致离线**的本地化推理体验。
+
+---
+
+## 🚀 安装指南
+
+由于目前尚未上架 Chrome 商店，请通过以下开发者模式安装：
+
+1. `Clone` 或下载本仓库代码到你的本地电脑。
+2. 打开 Chrome 浏览器，在地址栏输入 `chrome://extensions/` 回车。
+3. 在页面右上角开启 **“开发者模式”** 拨动开关。
+4. 点击左上角的 **“加载已解压的扩展程序”**。
+5. 选择你刚刚下载好、并且解压过的 `focus-quiz-optimized` 文件夹。
+6. 安装成功后，请右键点击浏览器右上角的扩展图标，选择 **“选项 (Options)”**。
+7. 根据指引填入你喜欢的 AI 厂商 API 密钥。
+
+---
+
+> _"The first principle is that you must not fool yourself and you are the easiest person to fool." — Richard Feynman_

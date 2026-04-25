@@ -1,77 +1,38 @@
 /**
- * providers.js - 统一的大模型 Provider 抽象层
- * 支持: Gemini, OpenAI, Anthropic, Ollama (本地)
- * 支持: DeepSeek, 智谱AI, MiniMax, 通义千问 (国内, 均兼容 OpenAI 格式)
+ * providers.js - unified LLM provider adapter layer.
+ * Provider/model metadata lives in provider-presets.js.
  */
 
-// ========================
-// Provider 配置模板
-// ========================
-const PROVIDERS = {
-  gemini: {
-    name: 'Google Gemini',
-    models: ['gemini-2.5-flash-preview', 'gemini-2.5-pro-preview'],
-    defaultModel: 'gemini-2.5-flash-preview',
-    needsApiKey: true,
-    region: 'global'
-  },
-  openai: {
-    name: 'OpenAI',
-    models: ['gpt-4o-mini', 'gpt-4o', 'gpt-4.1-mini', 'gpt-4.1-nano'],
-    defaultModel: 'gpt-4o-mini',
-    needsApiKey: true,
-    region: 'global'
-  },
-  anthropic: {
-    name: 'Anthropic (Claude)',
-    models: ['claude-sonnet-4-20250514', 'claude-haiku-4-20250514'],
-    defaultModel: 'claude-sonnet-4-20250514',
-    needsApiKey: true,
-    region: 'global'
-  },
-  deepseek: {
-    name: 'DeepSeek (深度求索)',
-    models: ['deepseek-chat', 'deepseek-reasoner'],
-    defaultModel: 'deepseek-chat',
-    needsApiKey: true,
-    baseURL: 'https://api.deepseek.com',
-    region: 'cn'
-  },
-  zhipu: {
-    name: '智谱AI (GLM)',
-    models: ['glm-4-flash', 'glm-4-plus', 'glm-4-long'],
-    defaultModel: 'glm-4-flash',
-    needsApiKey: true,
-    baseURL: 'https://open.bigmodel.cn/api/paas/v4',
-    region: 'cn'
-  },
-  minimax: {
-    name: 'MiniMax (稀宇)',
-    models: ['MiniMax-M1-80k'],
-    defaultModel: 'MiniMax-M1-80k',
-    needsApiKey: true,
-    baseURL: 'https://api.minimaxi.com/v1',
-    region: 'cn'
-  },
-  qwen: {
-    name: '通义千问 (Qwen)',
-    models: ['qwen-plus', 'qwen-turbo', 'qwen-max'],
-    defaultModel: 'qwen-plus',
-    needsApiKey: true,
-    baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-    region: 'cn'
-  },
-  ollama: {
-    name: 'Ollama (本地)',
-    models: [],
-    defaultModel: 'qwen3:8b',
-    needsApiKey: false,
-    region: 'local'
-  }
-};
-
+const PROVIDERS = globalThis.FOCUS_QUIZ_PROVIDER_PRESETS || {};
 const OLLAMA_DEFAULT_ENDPOINT = 'http://localhost:11434';
 const OLLAMA_TIMEOUT_MS = 120000;
+
+function normalizeBaseURL(rawBaseURL, providerName) {
+  const input = (rawBaseURL || '').trim();
+  if (!input) throw new Error(`${providerName} Base URL 未配置。请点击 ⚙️ 前往设置。`);
+
+  let url;
+  try {
+    url = new URL(input);
+  } catch (_err) {
+    throw new Error(`${providerName} Base URL 格式错误: ${input}`);
+  }
+
+  if (!['http:', 'https:'].includes(url.protocol)) {
+    throw new Error(`${providerName} Base URL 必须是 http/https: ${input}`);
+  }
+
+  const suffixes = ['/chat/completions', '/messages'];
+  const normalizedPath = url.pathname.toLowerCase().replace(/\/+$/, '');
+  const matchedSuffix = suffixes.find((suffix) => normalizedPath.endsWith(suffix));
+  if (matchedSuffix) {
+    url.pathname = url.pathname.slice(0, url.pathname.length - matchedSuffix.length) || '/';
+  }
+
+  url.search = '';
+  url.hash = '';
+  return `${url.origin}${url.pathname === '/' ? '' : url.pathname}`.replace(/\/+$/, '');
+}
 
 function normalizeOllamaEndpoint(rawEndpoint) {
   const input = (rawEndpoint || OLLAMA_DEFAULT_ENDPOINT).trim();
@@ -87,7 +48,6 @@ function normalizeOllamaEndpoint(rawEndpoint) {
     throw new Error(`Ollama 地址必须是 http/https: ${input}`);
   }
 
-  // 0.0.0.0 是监听地址，客户端访问应使用 localhost
   if (url.hostname === '0.0.0.0' || url.hostname === '::' || url.hostname === '[::]') {
     url.hostname = 'localhost';
   }
@@ -111,7 +71,6 @@ function normalizeOllamaEndpoint(rawEndpoint) {
 
   url.search = '';
   url.hash = '';
-
   return `${url.origin}${url.pathname === '/' ? '' : url.pathname}`.replace(/\/+$/, '');
 }
 
@@ -171,11 +130,8 @@ function toJsonString(content, providerName) {
   }
 
   const candidates = [text];
-
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
-  if (fenced?.[1]) {
-    candidates.push(fenced[1].trim());
-  }
+  if (fenced?.[1]) candidates.push(fenced[1].trim());
 
   const firstBrace = text.indexOf('{');
   const lastBrace = text.lastIndexOf('}');
@@ -196,63 +152,43 @@ function toJsonString(content, providerName) {
   );
 }
 
-// ========================
-// 统一入口
-// ========================
 async function callLLM(prompt) {
   const storage = await chrome.storage.local.get(['activeProvider', 'providerConfigs']);
-  const provider = storage.activeProvider || 'gemini';
-  const configs = storage.providerConfigs || {};
-  const config = configs[provider] || {};
+  const providerId = storage.activeProvider || 'gemini';
+  const preset = PROVIDERS[providerId];
+  if (!preset) throw new Error(`未知 Provider: ${providerId}。请点击 ⚙️ 重新选择模型服务。`);
 
+  const configs = storage.providerConfigs || {};
+  const config = configs[providerId] || {};
   let content;
 
-  switch (provider) {
+  switch (preset.apiType) {
     case 'gemini':
-      content = await callGemini(prompt, config);
+      content = await callGemini(prompt, config, preset);
       break;
-    case 'openai':
-      content = await callOpenAICompat(prompt, config, 'https://api.openai.com/v1', PROVIDERS.openai.defaultModel);
+    case 'openai-compatible':
+      content = await callOpenAICompat(prompt, config, preset);
       break;
-    case 'anthropic':
-      content = await callAnthropic(prompt, config);
+    case 'anthropic-compatible':
+      content = await callAnthropicCompat(prompt, config, preset);
       break;
-
-    // 国内厂商：全部走 OpenAI 兼容格式
-    case 'deepseek':
-      content = await callOpenAICompat(prompt, config, PROVIDERS.deepseek.baseURL, PROVIDERS.deepseek.defaultModel);
-      break;
-    case 'zhipu':
-      content = await callOpenAICompat(prompt, config, PROVIDERS.zhipu.baseURL, PROVIDERS.zhipu.defaultModel);
-      break;
-    case 'minimax':
-      content = await callOpenAICompat(prompt, config, PROVIDERS.minimax.baseURL, PROVIDERS.minimax.defaultModel);
-      break;
-    case 'qwen':
-      content = await callOpenAICompat(prompt, config, PROVIDERS.qwen.baseURL, PROVIDERS.qwen.defaultModel);
-      break;
-
     case 'ollama':
-      content = await callOllama(prompt, config);
+      content = await callOllama(prompt, config, preset);
       break;
     default:
-      throw new Error(`Unknown provider: ${provider}`);
+      throw new Error(`不支持的 Provider 协议: ${preset.apiType}`);
   }
 
-  const providerName = PROVIDERS[provider]?.name || provider;
-  return toJsonString(content, providerName);
+  return toJsonString(content, preset.name || providerId);
 }
 
-// ========================
-// Gemini (独有格式)
-// ========================
-async function callGemini(prompt, config) {
+async function callGemini(prompt, config, preset) {
   const apiKey = config.apiKey;
   if (!apiKey) throw new Error('Gemini API Key 未配置。请点击 ⚙️ 前往设置。');
-  const model = config.model || PROVIDERS.gemini.defaultModel;
+  const model = config.model || preset.defaultModel;
 
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
     {
       method: 'POST',
       headers: {
@@ -267,8 +203,7 @@ async function callGemini(prompt, config) {
   );
 
   if (!response.ok) {
-    const err = await response.json();
-    throw new Error(`Gemini Error: ${err.error?.message || 'Request failed'}`);
+    throw new Error(`Gemini Error: ${await readErrorMessage(response)}`);
   }
 
   const data = await response.json();
@@ -279,19 +214,19 @@ async function callGemini(prompt, config) {
   return content;
 }
 
-// ========================
-// OpenAI 兼容格式 (OpenAI / DeepSeek / 智谱 / MiniMax / 通义千问 共用)
-// ========================
-async function callOpenAICompat(prompt, config, baseURL, fallbackModel) {
+async function callOpenAICompat(prompt, config, preset) {
   const apiKey = config.apiKey;
-  if (!apiKey) throw new Error('API Key 未配置。请点击 ⚙️ 前往设置。');
-  const model = config.model || fallbackModel;
+  if (!apiKey) throw new Error(`${preset.name} API Key 未配置。请点击 ⚙️ 前往设置。`);
+
+  const baseURL = normalizeBaseURL(config.baseURL || preset.baseURL, preset.name);
+  const model = config.model || preset.defaultModel;
+  if (!model) throw new Error(`${preset.name} 模型未配置。请点击 ⚙️ 前往设置。`);
 
   const requestBody = {
-      model: model,
-      messages: [{ role: 'user', content: prompt + '\n\n请严格返回 JSON 格式，不要有任何其他内容。' }],
-      response_format: { type: 'json_object' }
-    };
+    model,
+    messages: [{ role: 'user', content: prompt + '\n\n请严格返回 JSON 格式，不要有任何其他内容。' }],
+    response_format: { type: 'json_object' }
+  };
 
   async function request(body) {
     return fetch(`${baseURL}/chat/completions`, {
@@ -316,30 +251,30 @@ async function callOpenAICompat(prompt, config, baseURL, fallbackModel) {
       if (fallbackResponse.ok) {
         response = fallbackResponse;
       } else {
-        throw new Error(`API Error: ${await readErrorMessage(fallbackResponse)}`);
+        throw new Error(`${preset.name} Error: ${await readErrorMessage(fallbackResponse)}`);
       }
     } else {
-      throw new Error(`API Error: ${errMessage}`);
+      throw new Error(`${preset.name} Error: ${errMessage}`);
     }
   }
 
   const data = await response.json();
   const content = data?.choices?.[0]?.message?.content;
   if (!content) {
-    throw new Error(`API 返回异常: ${JSON.stringify(data).slice(0, 220)}`);
+    throw new Error(`${preset.name} 返回异常: ${JSON.stringify(data).slice(0, 220)}`);
   }
   return content;
 }
 
-// ========================
-// Anthropic (独有格式)
-// ========================
-async function callAnthropic(prompt, config) {
+async function callAnthropicCompat(prompt, config, preset) {
   const apiKey = config.apiKey;
-  if (!apiKey) throw new Error('Anthropic API Key 未配置。请点击 ⚙️ 前往设置。');
-  const model = config.model || PROVIDERS.anthropic.defaultModel;
+  if (!apiKey) throw new Error(`${preset.name} API Key 未配置。请点击 ⚙️ 前往设置。`);
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
+  const baseURL = normalizeBaseURL(config.baseURL || preset.baseURL, preset.name);
+  const model = config.model || preset.defaultModel;
+  if (!model) throw new Error(`${preset.name} 模型未配置。请点击 ⚙️ 前往设置。`);
+
+  const response = await fetch(`${baseURL}/messages`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -348,32 +283,31 @@ async function callAnthropic(prompt, config) {
       'anthropic-dangerous-direct-browser-access': 'true'
     },
     body: JSON.stringify({
-      model: model,
+      model,
       max_tokens: 4096,
       messages: [{ role: 'user', content: prompt + '\n\n请严格返回 JSON 格式，不要有任何其他内容。' }]
     })
   });
 
   if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(`Anthropic Error: ${err.error?.message || 'Request failed'}`);
+    throw new Error(`${preset.name} Error: ${await readErrorMessage(response)}`);
   }
 
   const data = await response.json();
-  const content = data?.content?.[0]?.text;
+  const textBlock = Array.isArray(data?.content)
+    ? data.content.find((item) => item?.type === 'text' && item?.text)
+    : null;
+  const content = textBlock?.text || data?.content?.[0]?.text;
   if (!content) {
-    throw new Error(`Anthropic 返回异常: ${JSON.stringify(data).slice(0, 220)}`);
+    throw new Error(`${preset.name} 返回异常: ${JSON.stringify(data).slice(0, 220)}`);
   }
   return content;
 }
 
-// ========================
-// Ollama (本地)
-// ========================
-async function callOllama(prompt, config) {
+async function callOllama(prompt, config, preset) {
   const endpoint = normalizeOllamaEndpoint(config.endpoint || OLLAMA_DEFAULT_ENDPOINT);
   let activeEndpoint = endpoint;
-  let model = (config.model || PROVIDERS.ollama.defaultModel || '').trim();
+  let model = (config.model || preset.defaultModel || '').trim();
 
   if (!model) {
     const available = await fetchOllamaModels(activeEndpoint);
@@ -499,7 +433,7 @@ async function callOllama(prompt, config) {
   if (!response.ok) {
     if (response.status === 403) {
       throw new Error(
-        'Ollama 返回 403：本地服务拒绝了 chrome-extension 来源。请设置 OLLAMA_ORIGINS（允许 chrome-extension://*）后重启 ollama serve，或改用文章里的 TranslateGemma2API 本地中转。'
+        'Ollama 返回 403：本地服务拒绝了 chrome-extension 来源。请设置 OLLAMA_ORIGINS（允许 chrome-extension://*）后重启 ollama serve。'
       );
     }
 

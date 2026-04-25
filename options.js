@@ -1,31 +1,41 @@
-// Options Page Logic - 多 Provider 配置管理 (含国内厂商)
+// Options Page Logic - provider presets + custom OpenAI-compatible endpoint
+
+const PRESETS = globalThis.FOCUS_QUIZ_PROVIDER_PRESETS || {};
+const REGION_LABELS = globalThis.FOCUS_QUIZ_REGION_LABELS || {};
+const OLLAMA_DEFAULT_ENDPOINT = 'http://localhost:11434';
 
 const providerSelect = document.getElementById('providerSelect');
+const providerRegion = document.getElementById('providerRegion');
+const providerProtocol = document.getElementById('providerProtocol');
+const providerDoc = document.getElementById('providerDoc');
+const baseUrlGroup = document.getElementById('baseUrlGroup');
+const baseUrlInput = document.getElementById('baseUrlInput');
+const apiKeyGroup = document.getElementById('apiKeyGroup');
+const apiKeyInput = document.getElementById('apiKeyInput');
+const modelSelectGroup = document.getElementById('modelSelectGroup');
+const modelSelect = document.getElementById('modelSelect');
+const customModelGroup = document.getElementById('customModelGroup');
+const customModelInput = document.getElementById('customModelInput');
 const saveBtn = document.getElementById('saveBtn');
 const statusDiv = document.getElementById('status');
 
-// 所有支持的 Provider ID
-const ALL_PROVIDERS = ['gemini', 'openai', 'anthropic', 'deepseek', 'zhipu', 'minimax', 'qwen', 'ollama'];
+let providerConfigs = {};
 
-// 需要 API Key 的 Provider
-const KEY_PROVIDERS = ['gemini', 'openai', 'anthropic', 'deepseek', 'zhipu', 'minimax', 'qwen'];
-const OLLAMA_DEFAULT_ENDPOINT = 'http://localhost:11434';
+function normalizeEndpoint(raw, fallback, label) {
+  const input = (raw || fallback || '').trim();
+  if (!input) throw new Error(`${label} 不能为空。`);
 
-function normalizeOllamaEndpointInput(raw) {
-  const input = (raw || OLLAMA_DEFAULT_ENDPOINT).trim();
   let url;
-
   try {
     url = new URL(input);
   } catch (_err) {
-    throw new Error('Ollama 地址格式错误，请使用 http://localhost:11434');
+    throw new Error(`${label} 格式错误，请使用 https://api.example.com/v1`);
   }
 
   if (!['http:', 'https:'].includes(url.protocol)) {
-    throw new Error('Ollama 地址必须以 http:// 或 https:// 开头');
+    throw new Error(`${label} 必须以 http:// 或 https:// 开头`);
   }
 
-  // 0.0.0.0 是监听地址，客户端访问应使用 localhost
   if (url.hostname === '0.0.0.0' || url.hostname === '::' || url.hostname === '[::]') {
     url.hostname = 'localhost';
   }
@@ -35,15 +45,22 @@ function normalizeOllamaEndpointInput(raw) {
     '/api/generate',
     '/v1/chat/completions',
     '/chat/completions',
+    '/messages',
     '/api',
     '/v1'
   ];
   const normalizedPath = url.pathname.toLowerCase().replace(/\/+$/, '');
   const matchedSuffix = badPathSuffixes.find((suffix) => normalizedPath.endsWith(suffix));
 
-  if (matchedSuffix) {
+  if (matchedSuffix && label.includes('Ollama')) {
     const trimmedPath = url.pathname.slice(0, url.pathname.length - matchedSuffix.length) || '/';
     url.pathname = trimmedPath;
+  } else if (matchedSuffix && !label.includes('Ollama')) {
+    const suffixesToTrim = ['/chat/completions', '/messages'];
+    const suffix = suffixesToTrim.find((s) => normalizedPath.endsWith(s));
+    if (suffix) {
+      url.pathname = url.pathname.slice(0, url.pathname.length - suffix.length) || '/';
+    }
   }
 
   url.search = '';
@@ -51,121 +68,161 @@ function normalizeOllamaEndpointInput(raw) {
   return `${url.origin}${url.pathname === '/' ? '' : url.pathname}`.replace(/\/+$/, '');
 }
 
-// ========================
-// UI: 切换 Provider 表单显示
-// ========================
-function showProviderConfig(provider) {
-  document.querySelectorAll('.provider-config').forEach(el => el.classList.add('hidden'));
-  const target = document.getElementById(`config-${provider}`);
-  if (target) target.classList.remove('hidden');
+function groupProviderIds() {
+  const groups = {};
+  Object.entries(PRESETS).forEach(([id, preset]) => {
+    const region = preset.region || 'custom';
+    if (!groups[region]) groups[region] = [];
+    groups[region].push(id);
+  });
+  return groups;
+}
+
+function renderProviderOptions() {
+  providerSelect.replaceChildren();
+  const groups = groupProviderIds();
+  const regionOrder = ['global', 'cn', 'gateway', 'coding', 'local', 'custom'];
+
+  regionOrder.forEach((region) => {
+    const ids = groups[region] || [];
+    if (ids.length === 0) return;
+    const optgroup = document.createElement('optgroup');
+    optgroup.label = REGION_LABELS[region] || region;
+    ids.forEach((id) => {
+      const option = document.createElement('option');
+      option.value = id;
+      option.textContent = PRESETS[id].name;
+      optgroup.appendChild(option);
+    });
+    providerSelect.appendChild(optgroup);
+  });
+}
+
+function renderModelOptions(preset, savedModel) {
+  const models = Array.isArray(preset.models) ? preset.models : [];
+  modelSelect.replaceChildren();
+
+  models.forEach((model) => {
+    const option = document.createElement('option');
+    option.value = model;
+    option.textContent = model;
+    modelSelect.appendChild(option);
+  });
+
+  const customOption = document.createElement('option');
+  customOption.value = '__custom__';
+  customOption.textContent = '手动输入模型 ID';
+  modelSelect.appendChild(customOption);
+
+  const preferredModel = savedModel || preset.defaultModel || models[0] || '';
+  const hasPresetModel = models.includes(preferredModel);
+  modelSelect.value = hasPresetModel ? preferredModel : '__custom__';
+  customModelInput.value = hasPresetModel ? '' : preferredModel;
+  customModelGroup.classList.toggle('hidden', modelSelect.value !== '__custom__');
+  modelSelectGroup.classList.toggle('hidden', preset.apiType === 'ollama' && models.length === 0);
+}
+
+function renderProviderConfig(providerId) {
+  const preset = PRESETS[providerId];
+  if (!preset) return;
+  const config = providerConfigs[providerId] || {};
+
+  providerRegion.textContent = REGION_LABELS[preset.region] || preset.region || 'Provider';
+  providerRegion.className = `badge ${preset.region || 'custom'}`;
+  providerProtocol.textContent = preset.apiType;
+  providerDoc.href = preset.doc || '#';
+  providerDoc.classList.toggle('hidden', !preset.doc);
+
+  const isOllama = preset.apiType === 'ollama';
+  const needsBaseURL = providerId.startsWith('custom-') || isOllama;
+  const needsApiKey = !isOllama;
+
+  baseUrlGroup.classList.toggle('hidden', !needsBaseURL);
+  apiKeyGroup.classList.toggle('hidden', !needsApiKey);
+
+  if (isOllama) {
+    baseUrlInput.placeholder = OLLAMA_DEFAULT_ENDPOINT;
+    baseUrlInput.value = config.endpoint || OLLAMA_DEFAULT_ENDPOINT;
+  } else {
+    baseUrlInput.placeholder = preset.baseURL || 'https://api.example.com/v1';
+    baseUrlInput.value = config.baseURL || preset.baseURL || '';
+  }
+
+  apiKeyInput.placeholder = preset.apiKeyPlaceholder || 'API Key...';
+  apiKeyInput.value = config.apiKey || '';
+  renderModelOptions(preset, config.model);
+}
+
+function selectedModel() {
+  return modelSelect.value === '__custom__' ? customModelInput.value.trim() : modelSelect.value;
+}
+
+function showStatus(text, ok) {
+  statusDiv.className = ok ? 'status-ok' : 'status-err';
+  statusDiv.textContent = text;
+  setTimeout(() => {
+    statusDiv.textContent = '';
+  }, 3500);
 }
 
 providerSelect.addEventListener('change', () => {
-  showProviderConfig(providerSelect.value);
+  renderProviderConfig(providerSelect.value);
 });
 
-// ========================
-// 加载已保存的配置
-// ========================
-async function loadConfig() {
-  const result = await chrome.storage.local.get(['activeProvider', 'providerConfigs']);
-  const active = result.activeProvider || 'gemini';
-  const configs = result.providerConfigs || {};
+modelSelect.addEventListener('change', () => {
+  customModelGroup.classList.toggle('hidden', modelSelect.value !== '__custom__');
+});
 
-  providerSelect.value = active;
-  showProviderConfig(active);
-
-  // 为每个有 API Key 的 provider 恢复值
-  KEY_PROVIDERS.forEach(p => {
-    const keyEl = document.getElementById(`${p}-apiKey`);
-    const modelEl = document.getElementById(`${p}-model`);
-    if (configs[p]) {
-      if (keyEl) keyEl.value = configs[p].apiKey || '';
-      if (modelEl) modelEl.value = configs[p].model || '';
-    }
-  });
-
-  // Ollama 特殊处理
-  if (configs.ollama) {
-    document.getElementById('ollama-endpoint').value = configs.ollama.endpoint || OLLAMA_DEFAULT_ENDPOINT;
-    document.getElementById('ollama-model').value = configs.ollama.model || '';
-  }
-}
-
-// ========================
-// 保存配置
-// ========================
 saveBtn.addEventListener('click', async () => {
   const activeProvider = providerSelect.value;
-
-  // 收集所有 provider 的配置（保留之前配置过的）
-  const result = await chrome.storage.local.get(['providerConfigs']);
-  const configs = result.providerConfigs || {};
-
-  // 收集每个有 Key 的 provider
-  KEY_PROVIDERS.forEach(p => {
-    const keyEl = document.getElementById(`${p}-apiKey`);
-    const modelEl = document.getElementById(`${p}-model`);
-    configs[p] = {
-      apiKey: keyEl ? keyEl.value.trim() : '',
-      model: modelEl ? modelEl.value : ''
-    };
-  });
-
-  // Ollama
-  let normalizedOllamaEndpoint = OLLAMA_DEFAULT_ENDPOINT;
-  try {
-    normalizedOllamaEndpoint = normalizeOllamaEndpointInput(
-      document.getElementById('ollama-endpoint').value.trim() || OLLAMA_DEFAULT_ENDPOINT
-    );
-  } catch (err) {
-    statusDiv.className = 'status-err';
-    statusDiv.textContent = err.message;
-    setTimeout(() => statusDiv.textContent = '', 3000);
+  const preset = PRESETS[activeProvider];
+  if (!preset) {
+    showStatus('未知 Provider。', false);
     return;
   }
 
-  configs.ollama = {
-    endpoint: normalizedOllamaEndpoint,
-    model: document.getElementById('ollama-model').value.trim()
+  const config = {};
+
+  try {
+    if (preset.apiType === 'ollama') {
+      config.endpoint = normalizeEndpoint(baseUrlInput.value, OLLAMA_DEFAULT_ENDPOINT, 'Ollama 地址');
+    } else {
+      config.apiKey = apiKeyInput.value.trim();
+      if (!config.apiKey) throw new Error('请填写当前 Provider 的 API Key。');
+      if (activeProvider.startsWith('custom-')) {
+        config.baseURL = normalizeEndpoint(baseUrlInput.value, '', 'Base URL');
+      }
+    }
+
+    config.model = selectedModel();
+    if (!config.model) throw new Error('请填写模型 ID。');
+  } catch (err) {
+    showStatus(err.message || String(err), false);
+    return;
+  }
+
+  providerConfigs[activeProvider] = config;
+
+  const saveData = {
+    activeProvider,
+    providerConfigs
   };
 
-  // 验证当前选中的 provider
-  if (KEY_PROVIDERS.includes(activeProvider) && !configs[activeProvider].apiKey) {
-    statusDiv.className = 'status-err';
-    statusDiv.textContent = `请填写当前 Provider 的 API Key。`;
-    setTimeout(() => statusDiv.textContent = '', 3000);
-    return;
-  }
-  if (activeProvider === 'ollama' && !configs.ollama.model) {
-    statusDiv.className = 'status-err';
-    statusDiv.textContent = '请填写 Ollama 的模型名称（如 qwen3:8b）。';
-    setTimeout(() => statusDiv.textContent = '', 3000);
-    return;
-  }
-
-  if (activeProvider === 'ollama') {
-    document.getElementById('ollama-endpoint').value = normalizedOllamaEndpoint;
-  }
-
-  // 兼容旧版
-  const saveData = { activeProvider, providerConfigs: configs };
-  if (configs.gemini && configs.gemini.apiKey) {
-    saveData.geminiApiKey = configs.gemini.apiKey;
+  if (activeProvider === 'gemini' && config.apiKey) {
+    saveData.geminiApiKey = config.apiKey;
   }
 
   await chrome.storage.local.set(saveData);
-
-  // 获取 provider 显示名
-  const providerNames = {
-    gemini: 'Gemini', openai: 'OpenAI', anthropic: 'Claude',
-    deepseek: 'DeepSeek', zhipu: '智谱AI', minimax: 'MiniMax', qwen: '通义千问', ollama: 'Ollama'
-  };
-
-  statusDiv.className = 'status-ok';
-  statusDiv.textContent = `✓ 已保存！当前使用: ${providerNames[activeProvider] || activeProvider}`;
-  setTimeout(() => statusDiv.textContent = '', 3000);
+  showStatus(`✓ 已保存！当前使用: ${preset.name} / ${config.model}`, true);
 });
 
-// 启动时加载
+async function loadConfig() {
+  renderProviderOptions();
+  const result = await chrome.storage.local.get(['activeProvider', 'providerConfigs']);
+  providerConfigs = result.providerConfigs || {};
+  const active = PRESETS[result.activeProvider] ? result.activeProvider : 'gemini';
+  providerSelect.value = active;
+  renderProviderConfig(active);
+}
+
 loadConfig();

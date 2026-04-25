@@ -137,3 +137,33 @@ Auto-updated by git hooks. Each commit appends an entry under the corresponding 
     - src/options/options.js
     - src/sidepanel/index.html
     - src/sidepanel/index.js
+
+- [manual-sync] Working snapshot
+  - Time: 2026-04-25 20:32:18 +0800
+  - Branch: main
+  - Last commit: d97071e chore: prepare focus quiz for release testing
+  - Pending changes:
+    -  M README.md
+    -  M RELEASE_CHECKLIST.md
+    -  M eval_prd.md
+    -  M manifest.json
+    -  M options.html
+    -  M options.js
+    -  M providers.js
+    -  M sidepanel.html
+    - ?? provider-presets.js
+
+- Commit: feat: add provider registry and custom model gateways
+  - Time: 2026-04-25 20:32:44 +0800
+  - Stats: 10 files changed, 602 insertions(+), 415 deletions(-)
+  - Files:
+    - DEVELOPMENT_LOG.md
+    - README.md
+    - RELEASE_CHECKLIST.md
+    - eval_prd.md
+    - manifest.json
+    - options.html
+    - options.js
+    - provider-presets.js
+    - providers.js
+    - sidepanel.html

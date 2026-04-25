@@ -5,7 +5,7 @@
 **不要复述，直面审问。**
 **一款基于大语言模型的“认知压力测试” Chrome 扩展。**
 
-[为什么做它](#为什么做它) • [核心逻辑](#核心逻辑) • [支持模型](#支持-8-大-ai-全平台) • [安装指南](#安装指南)
+[为什么做它](#为什么做它) • [核心逻辑](#核心逻辑) • [支持模型](#支持模型服务) • [安装指南](#安装指南)
 
 </div>
 
@@ -48,29 +48,20 @@ Focus Quiz **不是**一个帮你总结文章的扩展，也不是一个仅仅�
 
 ---
 
-## 支持 8 大 AI 全平台
+## 支持模型服务
 
 完全采用 **BYOK (Bring Your Own Key)** 模式，你的密钥仅保存在浏览器本地存储中，不经过任何中转服务器。
-目前已完美支持以下 8 大 AI 厂商的 API 直连：
 
-### 🌐 海外大厂
+当前版本已经从“固定 8 家 Provider”升级为 **Provider 预设 + 自定义兼容接口**：
 
-- **Google Gemini** (推荐 Gemini 2.5 Flash / Pro)
-- **OpenAI** (支持 GPT-4o 及各类变种)
-- **Anthropic** (支持 Claude 3.5 Sonnet / Haiku)
+- 原生/海外：Google Gemini、OpenAI、Anthropic Claude、Mistral
+- 国内直连：DeepSeek、阿里百炼/通义千问、Moonshot/Kimi、智谱 GLM、火山方舟/豆包、MiniMax CN
+- 聚合网关/高速推理：OpenRouter、302.AI、SiliconFlow、Groq、Together AI、Fireworks AI
+- Token Plan / Coding Plan：MiniMax Token Plan、MiniMax Coding Plan
+- 本地：Ollama
+- 自定义：任意 OpenAI-Compatible 或 Anthropic-Compatible 服务
 
-### 🇨🇳 国内直连 (原生兼容)
-
-完美兼容国内主流厂商的 OpenAI-Compatible 接口，无需繁琐配置，填入他们的 API Key 即可丝滑使用：
-
-- **DeepSeek (深度求索)** (V3 Chat / R1 Reasoner)
-- **智谱AI (GLM)** (GLM-4 系列)
-- **MiniMax (稀宇)** (M1-80k 等)
-- **通义千问 (Qwen)** (Turbo / Plus / Max)
-
-### 🏠 本地离线部署
-
-- **Ollama**：填入你跑在本地的端口（通常为 `http://localhost:11434`）及已拉取的本地权重名称（如 `gemma3:4b`, `qwen3:8b`），实现**零成本、完全隐私、极致离线**的本地化推理体验。
+模型列表是内置快照。若服务商已经发布新模型，设置页可以直接选择“手动输入模型 ID”，无需等待项目更新。
 
 ---
 
@@ -99,6 +90,7 @@ Focus Quiz **不是**一个帮你总结文章的扩展，也不是一个仅仅�
 - 选中的文本会发送给你在设置页选择的模型 Provider。
 - 如果使用 Ollama，本地模型调用会走你配置的本地服务地址。
 - 项目没有自建服务器，也不会收集用户行为数据。
+- 为了支持自定义 HTTPS 模型网关，扩展声明了较宽的 HTTPS host permission；实际请求只会发往你当前选择或填写的 Provider Base URL。
 
 ## 分享前状态
 

@@ -13,7 +13,7 @@
 经过对 `background.js` 和 `sidepanel.js` 的源码分析，Focus Quiz 目前的架构非常轻量且硬核：
 
 - **交互链路**：用户在网页划词 -> 右键点击 "Focus Quiz: 审问选中文本" -> 数据存入 local storage -> 侧边栏监听到变化并提取文本。
-- **引擎核心 (The Brain)**：采用 BYOK 模式，由用户在 Options Page 中选择 Provider 并保存自己的 API Key；当前支持 Gemini、OpenAI、Anthropic、DeepSeek、智谱、MiniMax、通义千问和 Ollama。
+- **引擎核心 (The Brain)**：采用 BYOK 模式，由用户在 Options Page 中选择 Provider 并保存自己的 API Key；当前支持 Provider 预设注册表、自定义 OpenAI-Compatible、自定义 Anthropic-Compatible 和 Ollama。
 - **Prompt 工程 (The Magic)**：设定了极其严苛的系统提示词（Role: **The Inquisitor 学术导师**），明确要求大模型不准做总结复述，而是直接**粉碎认知**。
 - **输出范式**：强制大模型返回严格的 JSON，包含三种高级题型：
   1.  `trap` [概念陷阱题]
@@ -55,6 +55,8 @@
 
 1.  **安全风险控制**：早期原型中的硬编码密钥风险已移除，当前采用 BYOK 模式。
     - _后续_：公开分享时需要继续强调：API Key 存在浏览器本地；选中文本会发送给用户选择的模型服务商。
+2.  **Provider 更新机制**：已从固定 8 家 Provider 改成统一注册表；模型过期时可以手动输入模型 ID，不必等待代码更新。
+    - _后续_：如果使用频率提高，可以接入 models.dev 的模型目录作为定期刷新来源。
 
 ### P1 核心体验提升 (UX Enhancements)
 

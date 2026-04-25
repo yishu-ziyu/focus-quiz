@@ -104,6 +104,7 @@ Focus Quiz **不是**一个帮你总结文章的扩展，也不是一个仅仅�
 
 当前版本正在进行公开分享前优化，详见 [RELEASE_CHECKLIST.md](./RELEASE_CHECKLIST.md)。
 
+下一阶段产品判断与竞品分析见 [PRODUCT_STRATEGY_NEXT.md](./PRODUCT_STRATEGY_NEXT.md)。
 三题设计的学习科学依据见 [THREE_QUESTION_RATIONALE.md](./THREE_QUESTION_RATIONALE.md)。
 更口语化的轻学术补充材料见 [LEARNING_SCIENCE_NOTES.md](./LEARNING_SCIENCE_NOTES.md)。
 下周分享会草稿见 [SHARE_TALK_DRAFT.md](./SHARE_TALK_DRAFT.md)。

@@ -285,3 +285,19 @@ Auto-updated by git hooks. Each commit appends an entry under the corresponding 
     - options.js
     - sidepanel.html
     - sidepanel.js
+
+- [manual-sync] Working snapshot
+  - Time: 2026-04-25 23:59:57 +0800
+  - Branch: main
+  - Last commit: 1f58239 style: refine academic paper interface
+  - Pending changes:
+    -  M README.md
+    - ?? PRODUCT_STRATEGY_NEXT.md
+
+- Commit: docs: add product strategy roadmap
+  - Time: 2026-04-25 23:59:58 +0800
+  - Stats: 3 files changed, 231 insertions(+)
+  - Files:
+    - DEVELOPMENT_LOG.md
+    - PRODUCT_STRATEGY_NEXT.md
+    - README.md

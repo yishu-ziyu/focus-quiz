@@ -219,3 +219,21 @@ Auto-updated by git hooks. Each commit appends an entry under the corresponding 
     - manifest.json
     - sidepanel.html
     - sidepanel.js
+
+- [manual-sync] Working snapshot
+  - Time: 2026-04-25 21:54:56 +0800
+  - Branch: main
+  - Last commit: 74d91a1 feat: add full-page quiz and source backlinks
+  - Pending changes:
+    -  M README.md
+    -  M THREE_QUESTION_RATIONALE.md
+    - ?? LEARNING_SCIENCE_NOTES.md
+
+- Commit: docs: add learning science notes
+  - Time: 2026-04-25 21:54:56 +0800
+  - Stats: 4 files changed, 136 insertions(+)
+  - Files:
+    - DEVELOPMENT_LOG.md
+    - LEARNING_SCIENCE_NOTES.md
+    - README.md
+    - THREE_QUESTION_RATIONALE.md

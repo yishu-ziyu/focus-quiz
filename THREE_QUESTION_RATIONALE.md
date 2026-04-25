@@ -35,6 +35,7 @@ Focus Quiz 的目标不是把文章变成一套完整试卷，而是在用户读
 
 ## 研究依据
 
+- 最接近“三题数量”这个问题的是 Pitt 和 Huebner 的研究。它不是文章阅读场景，也没有证明“三题严格最优”，但它直接研究 review question 的数量与效果：超过一道选择题时，学习表现提升最大，同时也提示题量收益可能存在饱和。这可以支持“三题是最小有效剂量”的产品解释。
 - Dunlosky 等人在 2013 年对常见学习技术的综述中，将 practice testing / retrieval practice 评为高效学习技术之一；这支持 Focus Quiz 用主动回忆替代重复阅读。
 - Roediger 与 Karpicke 的 test-enhanced learning 研究支持“测试本身能增强长期保持”，这对应产品中的三题压力测试。
 - Bjork 的 desirable difficulties 框架说明：适度增加学习难度可以提升长期保持和迁移，但困难必须是有益且可承受的。
@@ -43,6 +44,7 @@ Focus Quiz 的目标不是把文章变成一套完整试卷，而是在用户读
 
 参考：
 
+- Pitt & Huebner (2025), Retrieval Practice Improves Exam Performance as a Function of Review Question Number and Format: https://pubmed.ncbi.nlm.nih.gov/38838277/
 - Dunlosky et al. (2013), Improving Students' Learning With Effective Learning Techniques: https://www.psychologicalscience.org/publications/journals/pspi/learning-techniques.html
 - Roediger & Karpicke (2006), Test-Enhanced Learning: https://journals.sagepub.com/doi/pdf/10.1111/j.1467-9280.2006.01693.x
 - Desirable difficulty discussion and recent review: https://pmc.ncbi.nlm.nih.gov/articles/PMC12432286/
@@ -54,3 +56,5 @@ Focus Quiz 的目标不是把文章变成一套完整试卷，而是在用户读
 我没有把它设计成十道题，是因为这不是考试软件。用户刚读完一篇文章，认知资源已经被占用了。如果再让他做一整套题，他很可能直接放弃。
 
 所以我选择三道题：第一题看概念有没有误读，第二题看因果关系能不能被反事实检验，第三题看能不能迁移到新场景。三道题刚好构成一个最小闭环：概念、逻辑、迁移。它给用户一点认知阻力，但不会把阅读体验变成负担。
+
+更口语化的分享会补充材料见 [LEARNING_SCIENCE_NOTES.md](./LEARNING_SCIENCE_NOTES.md)。

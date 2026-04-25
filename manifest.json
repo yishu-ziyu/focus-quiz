@@ -3,7 +3,7 @@
   "name": "Focus Quiz",
   "version": "1.0.0",
   "description": "Turn selected web text into retrieval, counterfactual, and transfer questions.",
-  "permissions": ["sidePanel", "contextMenus", "storage", "activeTab"],
+  "permissions": ["sidePanel", "contextMenus", "storage", "activeTab", "scripting"],
   "host_permissions": [
     "http://127.0.0.1/*",
     "http://localhost/*",

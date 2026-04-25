@@ -193,3 +193,29 @@ Auto-updated by git hooks. Each commit appends an entry under the corresponding 
     - learning-profile.js
     - sidepanel.html
     - sidepanel.js
+
+- [manual-sync] Working snapshot
+  - Time: 2026-04-25 21:44:40 +0800
+  - Branch: main
+  - Last commit: 533d18d feat: add adaptive learning profile
+  - Pending changes:
+    -  M README.md
+    -  M RELEASE_CHECKLIST.md
+    -  M background.js
+    -  M manifest.json
+    -  M sidepanel.html
+    -  M sidepanel.js
+    - ?? THREE_QUESTION_RATIONALE.md
+
+- Commit: feat: add full-page quiz and source backlinks
+  - Time: 2026-04-25 21:45:17 +0800
+  - Stats: 8 files changed, 199 insertions(+), 6 deletions(-)
+  - Files:
+    - DEVELOPMENT_LOG.md
+    - README.md
+    - RELEASE_CHECKLIST.md
+    - THREE_QUESTION_RATIONALE.md
+    - background.js
+    - manifest.json
+    - sidepanel.html
+    - sidepanel.js

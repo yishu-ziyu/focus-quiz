@@ -253,6 +253,18 @@ async function renderMistakeLog() {
     meta.textContent = new Date(item.timestamp).toLocaleString('zh-CN');
     div.appendChild(meta);
 
+    if (item.sourceUrl) {
+      const source = document.createElement('div');
+      source.className = 'mistake-source';
+      const link = document.createElement('a');
+      link.href = item.sourceUrl;
+      link.target = '_blank';
+      link.rel = 'noreferrer';
+      link.textContent = item.sourceTitle ? `回到原文：${item.sourceTitle}` : '回到原文';
+      source.appendChild(link);
+      div.appendChild(source);
+    }
+
     const q = document.createElement('div');
     q.className = 'q-text';
     q.textContent = item.question;
@@ -303,11 +315,27 @@ function shareQuestion(questionText, explanation) {
 // 检查待处理文本
 // ========================
 async function checkForText() {
-  const result = await chrome.storage.local.get(['selectedText', 'timestamp', 'sourceMode', 'sourceUrl', 'sourceTitle']);
+  const result = await chrome.storage.local.get(['selectedText', 'timestamp', 'sourceMode', 'sourceUrl', 'sourceTitle', 'extractionError']);
+
+  if (result.extractionError && result.timestamp && Date.now() - result.timestamp < 300000) {
+    showError(result.extractionError);
+    chrome.storage.local.remove(['extractionError', 'timestamp']);
+    return;
+  }
 
   if (result.selectedText && result.timestamp) {
     if (Date.now() - result.timestamp < 300000) {
-      selectedTextDiv.textContent = `"${result.selectedText.substring(0, 150)}${result.selectedText.length > 150 ? '...' : ''}"`;
+      const mode = result.sourceMode || 'selection';
+      const label = mode === 'fullpage' ? '全文模式' : '选区模式';
+      const title = result.sourceTitle ? ` · ${result.sourceTitle}` : '';
+      selectedTextDiv.replaceChildren();
+      const sourceLabel = document.createElement('div');
+      sourceLabel.className = 'source-label';
+      sourceLabel.textContent = `${label}${title}`;
+      selectedTextDiv.appendChild(sourceLabel);
+      selectedTextDiv.append(
+        `"${result.selectedText.substring(0, 180)}${result.selectedText.length > 180 ? '...' : ''}"`
+      );
       selectedTextDiv.classList.remove('hidden');
 
       generateQuiz(result.selectedText, {
@@ -614,7 +642,7 @@ loadLearningProfile();
 checkForText();
 
 chrome.storage.onChanged.addListener((changes) => {
-  if (changes.selectedText) {
+  if (changes.selectedText || changes.extractionError) {
     checkForText();
   }
 });

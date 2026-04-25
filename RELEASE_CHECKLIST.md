@@ -13,6 +13,8 @@
 - [x] README 存在错字和动机缺口，已补充认知负荷、检索练习、反事实和迁移应用的产品动机。
 - [x] Provider 从固定 8 家扩展为预设注册表，新增 OpenRouter、302.AI、SiliconFlow、Moonshot/Kimi、火山方舟、Groq、Together、Fireworks、MiniMax Token Plan / Coding Plan 和自定义兼容接口。
 - [x] MiniMax 从旧 `MiniMax-M1-80k` 更新到 `MiniMax-M2.7` / `MiniMax-M2.7-highspeed` 等 M2 系列模型，并改走 Anthropic-Compatible 接入。
+- [x] 个性化认知画像 MVP：记录完整答题事件，按概念边界、因果推演、迁移应用计算本地画像，并在三题结束后给出本轮诊断。
+- [x] 自适应 prompt MVP：根据本地画像给下一轮题目注入目标难度和薄弱维度提示。
 
 ## 待真人体验验证
 
@@ -24,6 +26,9 @@
 - [ ] 本地 Ollama 的 403 / 模型不存在 / 超时提示是否足够可操作。
 - [ ] 自定义 OpenAI-Compatible / Anthropic-Compatible 服务的 Base URL 填写说明是否足够清楚。
 - [ ] 宽 HTTPS host permission 是否需要在分享时主动解释。
+- [ ] 冷启动时“样本不足”的文案是否自然，不会让第一次使用者困惑。
+- [ ] 本轮诊断是否真的符合用户主观感受，是否过度武断。
+- [ ] 自适应难度是否能被肉眼感知，还是需要更强的题目差异。
 
 ## 分享前建议演示流程
 

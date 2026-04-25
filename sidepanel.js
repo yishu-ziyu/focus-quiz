@@ -12,6 +12,12 @@ const streakBadge = document.getElementById('streakBadge');
 const mainView = document.getElementById('mainView');
 const mistakeView = document.getElementById('mistakeView');
 const mistakeList = document.getElementById('mistakeList');
+const profileSummary = document.getElementById('profileSummary');
+const diagnosisDiv = document.getElementById('diagnosis');
+const Learning = globalThis.FocusQuizLearning;
+
+let currentLearningProfile = null;
+let currentQuizSession = null;
 
 // ========================
 // Inquisitor 审问语录池 (Product Taste: Loading State)
@@ -99,11 +105,130 @@ async function saveMistake(question, userChoiceIdx, correctIdx, explanation, opt
     correctAnswer: options[correctIdx],
     explanation: explanation,
     timestamp: Date.now(),
-    sourceUrl: '' // 可以后续从 tab 获取
+    sourceUrl: currentQuizSession?.source?.url || '',
+    sourceTitle: currentQuizSession?.source?.title || ''
   });
   // 最多保留 50 条
   if (log.length > 50) log.length = 50;
   await chrome.storage.local.set({ mistakeLog: log });
+}
+
+// ========================
+// 个性化认知画像
+// ========================
+async function loadLearningProfile() {
+  if (!Learning) return;
+  const state = await Learning.loadLearningState();
+  currentLearningProfile = state.profile;
+  renderLearningProfile(currentLearningProfile);
+}
+
+function renderLearningProfile(profile) {
+  if (!profileSummary || !Learning) return;
+  profileSummary.replaceChildren();
+
+  const top = document.createElement('div');
+  top.className = 'profile-top';
+
+  const title = document.createElement('div');
+  title.className = 'profile-title';
+  title.textContent = '认知画像';
+  top.appendChild(title);
+
+  const meta = document.createElement('div');
+  meta.className = 'profile-meta';
+  meta.textContent = profile?.overall === null || profile?.overall === undefined
+    ? '冷启动'
+    : `综合 ${profile.overall}`;
+  top.appendChild(meta);
+  profileSummary.appendChild(top);
+
+  const bars = document.createElement('div');
+  bars.className = 'profile-bars';
+  Object.values(profile?.dimensions || {}).forEach((dimension) => {
+    const row = document.createElement('div');
+    row.className = 'profile-row';
+
+    const label = document.createElement('span');
+    label.textContent = dimension.label;
+    row.appendChild(label);
+
+    const track = document.createElement('div');
+    track.className = 'profile-track';
+    const fill = document.createElement('div');
+    fill.className = 'profile-fill';
+    fill.style.width = `${Number.isFinite(dimension.score) ? dimension.score : 0}%`;
+    track.appendChild(fill);
+    row.appendChild(track);
+
+    const score = document.createElement('span');
+    score.textContent = Number.isFinite(dimension.score) ? String(dimension.score) : '--';
+    row.appendChild(score);
+
+    bars.appendChild(row);
+  });
+  profileSummary.appendChild(bars);
+
+  const summary = document.createElement('div');
+  summary.className = 'profile-summary';
+  summary.textContent = profile?.summary || '样本不足。先完成几轮测试，系统会开始判断你的理解结构。';
+  profileSummary.appendChild(summary);
+}
+
+function createQuizSession(text, questions, sourceMeta, providerMeta) {
+  return {
+    sessionId: `fq_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    startedAt: Date.now(),
+    source: {
+      mode: sourceMeta?.mode || 'selection',
+      url: sourceMeta?.url || '',
+      title: sourceMeta?.title || '',
+      textLength: text.length,
+      textHash: Learning ? Learning.hashText(text) : ''
+    },
+    provider: providerMeta || {},
+    answers: [],
+    questions: questions.map((q, idx) => ({
+      index: idx,
+      type: q.type,
+      startedAt: Date.now()
+    }))
+  };
+}
+
+function renderSessionDiagnosis() {
+  if (!diagnosisDiv || !Learning || !currentQuizSession) return;
+  const totalQuestions = currentQuizSession.questions.length;
+  if (currentQuizSession.answers.length < totalQuestions) return;
+
+  const diagnosis = Learning.diagnoseSession(currentQuizSession.answers, currentLearningProfile);
+  diagnosisDiv.replaceChildren();
+
+  const title = document.createElement('div');
+  title.className = 'diagnosis-title';
+  title.textContent = `本轮诊断：${diagnosis.status}`;
+  diagnosisDiv.appendChild(title);
+
+  const body = document.createElement('div');
+  body.className = 'diagnosis-body';
+  body.append(
+    `答对 ${diagnosis.correct}/${diagnosis.total}。`,
+    document.createElement('br'),
+    diagnosis.detail,
+    document.createElement('br'),
+    diagnosis.recommendation
+  );
+  diagnosisDiv.appendChild(body);
+  diagnosisDiv.classList.remove('hidden');
+}
+
+async function getProviderMeta() {
+  const result = await chrome.storage.local.get(['activeProvider', 'providerConfigs']);
+  const provider = result.activeProvider || 'gemini';
+  return {
+    provider,
+    model: result.providerConfigs?.[provider]?.model || ''
+  };
 }
 
 async function renderMistakeLog() {
@@ -178,16 +303,20 @@ function shareQuestion(questionText, explanation) {
 // 检查待处理文本
 // ========================
 async function checkForText() {
-  const result = await chrome.storage.local.get(['selectedText', 'timestamp']);
+  const result = await chrome.storage.local.get(['selectedText', 'timestamp', 'sourceMode', 'sourceUrl', 'sourceTitle']);
 
   if (result.selectedText && result.timestamp) {
     if (Date.now() - result.timestamp < 300000) {
       selectedTextDiv.textContent = `"${result.selectedText.substring(0, 150)}${result.selectedText.length > 150 ? '...' : ''}"`;
       selectedTextDiv.classList.remove('hidden');
 
-      generateQuiz(result.selectedText);
+      generateQuiz(result.selectedText, {
+        mode: result.sourceMode || 'selection',
+        url: result.sourceUrl || '',
+        title: result.sourceTitle || ''
+      });
 
-      chrome.storage.local.remove(['selectedText', 'timestamp']);
+      chrome.storage.local.remove(['selectedText', 'timestamp', 'sourceMode', 'sourceUrl', 'sourceTitle']);
     }
   }
 }
@@ -195,11 +324,14 @@ async function checkForText() {
 // ========================
 // 生成 Quiz
 // ========================
-async function generateQuiz(text) {
+async function generateQuiz(text, sourceMeta = {}) {
   loadingDiv.classList.remove('hidden');
   errorDiv.classList.add('hidden');
+  diagnosisDiv.classList.add('hidden');
   quizDiv.replaceChildren();
   startLoadingQuotes();
+  await loadLearningProfile();
+  const adaptivePrompt = Learning ? Learning.adaptivePrompt(currentLearningProfile) : '';
 
   const prompt = `# Role
 你是我极其严苛、极度注重逻辑闭环的学术导师（The Inquisitor）。你的目标不是让我"记住"文本，而是要**粉碎**我脑中那些似是而非的认知，直到我能通过第一性原理重构知识。
@@ -244,15 +376,20 @@ async function generateQuiz(text) {
 - 如果选错，必须指出思维模型在哪里断裂（因果倒置？偷换概念？忽略前提？）
 - 解释要精准、犀利，不要废话
 
+${adaptivePrompt}
+
 文本内容: ${text}`;
 
   try {
     // 使用 providers.js 的统一抽象层
+    const providerMeta = await getProviderMeta();
     const content = await callLLM(prompt);
     console.info('[Focus Quiz] Quiz generated');
 
     const quizData = JSON.parse(content);
-    renderQuiz(quizData);
+    const questions = renderQuiz(quizData);
+    if (questions.length === 0) return;
+    currentQuizSession = createQuizSession(text, questions, sourceMeta, providerMeta);
 
     // Streak: 成功生成 Quiz 后更新连续天数
     await updateStreak();
@@ -290,7 +427,7 @@ function renderQuiz(data) {
   const questions = normalizeQuestions(data);
   if (questions.length === 0) {
     showError('没有生成可用题目。请换一段更完整的文本，或重试一次。');
-    return;
+    return [];
   }
 
   const typeLabels = {
@@ -303,6 +440,9 @@ function renderQuiz(data) {
     const div = document.createElement('div');
     div.className = 'card question';
     div.style.animationDelay = `${idx * 0.1}s`;
+    div.dataset.index = String(idx);
+    div.dataset.type = q.type;
+    div.dataset.startedAt = String(Date.now());
 
     if (q.type) {
       const typeTag = document.createElement('span');
@@ -330,6 +470,8 @@ function renderQuiz(data) {
     div.appendChild(optionsDiv);
     quizDiv.appendChild(div);
   });
+
+  return questions;
 }
 
 function normalizeQuestions(data) {
@@ -351,8 +493,12 @@ function normalizeQuestions(data) {
 // ========================
 // 处理答案
 // ========================
-function handleAnswer(btn, chosenIdx, correctIdx, explanation, container, questionText, options) {
+async function handleAnswer(btn, chosenIdx, correctIdx, explanation, container, questionText, options) {
   const isCorrect = chosenIdx === correctIdx;
+  const questionCard = container.closest('.question');
+  const questionIndex = Number.parseInt(questionCard?.dataset.index || '-1', 10);
+  const questionType = questionCard?.dataset.type || '';
+  const questionStartedAt = Number.parseInt(questionCard?.dataset.startedAt || String(Date.now()), 10);
 
   // 禁用所有按钮
   const buttons = container.querySelectorAll('.option');
@@ -367,7 +513,31 @@ function handleAnswer(btn, chosenIdx, correctIdx, explanation, container, questi
   if (!isCorrect) {
     btn.classList.add('wrong');
     // 错题沉淀到本地
-    saveMistake(questionText, chosenIdx, correctIdx, explanation, options);
+    await saveMistake(questionText, chosenIdx, correctIdx, explanation, options);
+  }
+
+  const latencyMs = Date.now() - questionStartedAt;
+  const answerRecord = {
+    type: questionType,
+    dimension: Learning?.dimensions?.[questionType]?.id || questionType,
+    questionText,
+    correctIndex: correctIdx,
+    chosenIndex: chosenIdx,
+    isCorrect,
+    latencyMs
+  };
+  if (currentQuizSession) {
+    currentQuizSession.answers.push(answerRecord);
+  }
+  if (Learning && currentQuizSession) {
+    currentLearningProfile = await Learning.recordAnswerEvent({
+      sessionId: currentQuizSession.sessionId,
+      source: currentQuizSession.source,
+      provider: currentQuizSession.provider,
+      timestamp: Date.now(),
+      ...answerRecord
+    });
+    renderLearningProfile(currentLearningProfile);
   }
 
   // 显示解释
@@ -396,6 +566,7 @@ function handleAnswer(btn, chosenIdx, correctIdx, explanation, container, questi
   }
 
   container.parentElement.appendChild(expDiv);
+  renderSessionDiagnosis();
 }
 
 // ========================
@@ -439,6 +610,7 @@ document.getElementById('openSettings').addEventListener('click', () => {
 // 启动
 // ========================
 loadStreak();
+loadLearningProfile();
 checkForText();
 
 chrome.storage.onChanged.addListener((changes) => {

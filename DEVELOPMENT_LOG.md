@@ -167,3 +167,29 @@ Auto-updated by git hooks. Each commit appends an entry under the corresponding 
     - provider-presets.js
     - providers.js
     - sidepanel.html
+
+- [manual-sync] Working snapshot
+  - Time: 2026-04-25 21:23:43 +0800
+  - Branch: main
+  - Last commit: c80afee feat: add provider registry and custom model gateways
+  - Pending changes:
+    -  M README.md
+    -  M RELEASE_CHECKLIST.md
+    -  M background.js
+    -  M eval_prd.md
+    -  M sidepanel.html
+    -  M sidepanel.js
+    - ?? learning-profile.js
+
+- Commit: feat: add adaptive learning profile
+  - Time: 2026-04-25 21:23:50 +0800
+  - Stats: 8 files changed, 450 insertions(+), 10 deletions(-)
+  - Files:
+    - DEVELOPMENT_LOG.md
+    - README.md
+    - RELEASE_CHECKLIST.md
+    - background.js
+    - eval_prd.md
+    - learning-profile.js
+    - sidepanel.html
+    - sidepanel.js

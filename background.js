@@ -31,6 +31,9 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     // 保存选中的文本
     chrome.storage.local.set({
       selectedText: info.selectionText,
+      sourceMode: 'selection',
+      sourceUrl: tab?.url || '',
+      sourceTitle: tab?.title || '',
       timestamp: Date.now()
     });
 

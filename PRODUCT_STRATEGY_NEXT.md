@@ -130,9 +130,10 @@ Focus Quiz 的独特产品哲学是：
 
 目标：让 Focus Quiz 从“能生成题”变成“能解释为什么这样问”。
 
-1. 每题证据片段
-   - 每道题都要求模型返回 `evidenceQuote` 或 `sourceHint`。
-   - 答错后显示“这道题对应原文哪里”。
+1. Hint / Evidence 分离
+   - 每道题都要求模型返回 `sourceHint` 和 `evidenceQuote`。
+   - 作答前只显示不剧透的 Hint，避免提前公布答案依据。
+   - 作答后显示“这道题对应原文哪里”。
    - 错题本保存题目、解析、原文 URL、原文标题、证据片段。
 
 2. 问题重生成控制
@@ -193,8 +194,8 @@ Focus Quiz 的独特产品哲学是：
 
 第二轮：证据回链
 
-- prompt 要求每题返回证据片段
-- 侧边栏显示证据片段
+- prompt 要求每题返回 Hint 和 Evidence
+- 侧边栏作答前显示 Hint，作答后显示 Evidence
 - 错题本保存证据片段
 - Markdown 导出错题
 

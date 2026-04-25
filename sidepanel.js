@@ -455,8 +455,8 @@ async function generateQuiz(text, sourceMeta = {}) {
       "options": ["选项A", "选项B", "选项C", "选项D"],
       "correct": 0,
       "explanation": "指出错误选项的思维陷阱：是因果倒置？偷换概念？还是忽略了前提？",
-      "evidenceQuote": "原文中最能支持这道题的短句或片段",
-      "sourceHint": "如果无法逐字引用，说明它对应原文的哪一段论证"
+      "sourceHint": "作答前可显示的弱提示，不能泄露答案，只提示需要回忆哪类关系",
+      "evidenceQuote": "作答后才显示的原文证据短句"
     },
     {
       "type": "counterfactual",
@@ -464,8 +464,8 @@ async function generateQuiz(text, sourceMeta = {}) {
       "options": ["变化描述A", "变化描述B", "变化描述C", "变化描述D"],
       "correct": 0,
       "explanation": "揭示变量之间的动态关系，而非静态事实",
-      "evidenceQuote": "原文中最能支持这道题的短句或片段",
-      "sourceHint": "如果无法逐字引用，说明它对应原文的哪一段论证"
+      "sourceHint": "作答前可显示的弱提示，不能泄露答案，只提示需要回忆哪类关系",
+      "evidenceQuote": "作答后才显示的原文证据短句"
     },
     {
       "type": "transfer",
@@ -473,8 +473,8 @@ async function generateQuiz(text, sourceMeta = {}) {
       "options": ["做法A", "做法B", "做法C", "做法D"],
       "correct": 0,
       "explanation": "考察去语境化的迁移能力，指出深层逻辑",
-      "evidenceQuote": "原文中最能支持这道题的短句或片段",
-      "sourceHint": "如果无法逐字引用，说明它对应原文的哪一段论证"
+      "sourceHint": "作答前可显示的弱提示，不能泄露答案，只提示需要回忆哪类关系",
+      "evidenceQuote": "作答后才显示的原文证据短句"
     }
   ]
 }
@@ -487,7 +487,9 @@ async function generateQuiz(text, sourceMeta = {}) {
 - transfer 场景迁移：将逻辑迁移到完全不同的领域，考察深层理解。
 - 冷启动时优先生成 3 道题，形成概念 -> 反事实 -> 迁移的完整梯度。
 - 已有用户画像时，先判断文章最需要检验的能力；如果文章强烈命中用户薄弱维度，可以只生成 1 道靶向题。
-- 每道题必须返回 evidenceQuote 或 sourceHint。evidenceQuote 应该短而具体，避免大段复制原文；sourceHint 用于说明这道题对应原文的哪一段论证。
+- 每道题必须同时返回 sourceHint 和 evidenceQuote。
+- sourceHint 会在作答前展示，必须是弱提示，不能包含正确答案、关键选项词、可直接定位答案的原文短句；只提示用户应该回忆哪类关系、概念边界或推理方向。
+- evidenceQuote 会在作答后才展示，应该短而具体，避免大段复制原文，用来说明题目依据来自哪里。
 
 # Explanation Rules
 - 如果选错，必须指出思维模型在哪里断裂（因果倒置？偷换概念？忽略前提？）
@@ -616,8 +618,8 @@ function renderQuiz(data) {
     title.textContent = q.question;
     div.appendChild(title);
 
-    if (q.evidenceQuote || q.sourceHint) {
-      div.appendChild(renderEvidence(q.evidenceQuote, q.sourceHint));
+    if (q.sourceHint) {
+      div.appendChild(renderHint(q.sourceHint));
     }
 
     const optionsDiv = document.createElement('div');
@@ -638,14 +640,27 @@ function renderQuiz(data) {
   return questions;
 }
 
+function renderHint(sourceHint) {
+  const hint = document.createElement('div');
+  hint.className = 'hint';
+  const label = document.createElement('span');
+  label.className = 'hint-label';
+  label.textContent = 'Hint';
+  hint.appendChild(label);
+  hint.append(sourceHint);
+  return hint;
+}
+
 function renderEvidence(evidenceQuote, sourceHint) {
+  const text = evidenceQuote || sourceHint;
+  if (!text) return document.createDocumentFragment();
   const evidence = document.createElement('div');
   evidence.className = 'evidence';
   const label = document.createElement('span');
   label.className = 'evidence-label';
   label.textContent = evidenceQuote ? 'Evidence' : 'Source Hint';
   evidence.appendChild(label);
-  evidence.append(evidenceQuote || sourceHint);
+  evidence.append(text);
   return evidence;
 }
 

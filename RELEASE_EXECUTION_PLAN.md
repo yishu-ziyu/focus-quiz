@@ -4,7 +4,7 @@
 
 ## 目标
 
-把 Focus Quiz 从“可以生成题”推进到“生成失败可恢复、每道题有证据、错题可迁移到知识库”的状态。
+把 Focus Quiz 从“可以生成题”推进到“生成失败可恢复、作答前有不剧透提示、作答后有证据、错题可迁移到知识库”的状态。
 
 本轮不做社交、账号、云同步、完整知识库和复杂复习算法。原因见 [PRODUCT_STRATEGY_NEXT.md](./PRODUCT_STRATEGY_NEXT.md)：这些方向会扩大竞争面，但不能最快增强 Focus Quiz 的核心差异。
 
@@ -25,13 +25,13 @@
 - 用户能点击“重试生成”直接用同一篇文章重新生成。
 - 长文、模型上下文或 Provider 错误时，提示用户可以改用选区模式、缩短文本或换模型。
 
-### 2. 每题证据片段
+### 2. Hint / Evidence 分离
 
 验收标准：
 
-- prompt 要求每道题返回 `evidenceQuote` 或 `sourceHint`。
-- 题目卡片显示“证据片段”。
-- 答错后的解释里保留这道题对应的证据。
+- prompt 要求每道题同时返回 `sourceHint` 和 `evidenceQuote`。
+- 题目卡片只显示不剧透的 `sourceHint`，标签为 `Hint`。
+- 用户作答后才显示这道题对应的 `evidenceQuote`，标签为 `Evidence`。
 - 错题本保存证据片段和原文链接。
 
 ### 3. 错题 Markdown 导出

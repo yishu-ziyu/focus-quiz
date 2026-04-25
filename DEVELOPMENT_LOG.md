@@ -325,3 +325,27 @@ Auto-updated by git hooks. Each commit appends an entry under the corresponding 
     - RELEASE_EXECUTION_PLAN.md
     - sidepanel.html
     - sidepanel.js
+
+- [manual-sync] Working snapshot
+  - Time: 2026-04-26 01:14:16 +0800
+  - Branch: main
+  - Last commit: 571840c feat: add evidence-backed mistakes export
+  - Pending changes:
+    -  M PRODUCT_STRATEGY_NEXT.md
+    -  M README.md
+    -  M RELEASE_CHECKLIST.md
+    -  M RELEASE_EXECUTION_PLAN.md
+    -  M sidepanel.html
+    -  M sidepanel.js
+
+- Commit: fix: hide evidence until answer reveal
+  - Time: 2026-04-26 01:14:16 +0800
+  - Stats: 7 files changed, 58 insertions(+), 29 deletions(-)
+  - Files:
+    - DEVELOPMENT_LOG.md
+    - PRODUCT_STRATEGY_NEXT.md
+    - README.md
+    - RELEASE_CHECKLIST.md
+    - RELEASE_EXECUTION_PLAN.md
+    - sidepanel.html
+    - sidepanel.js

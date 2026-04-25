@@ -32,6 +32,11 @@
     .profile-track { height: 6px; background: #e4e4e7; border-radius: 999px; overflow: hidden; }
     .profile-fill { height: 100%; width: 0%; background: #18181b; border-radius: 999px; transition: width 0.3s ease; }
     .profile-summary { font-size: 11px; line-height: 1.5; color: #71717a; }
+    .strategy-card { background: #f0fdf4; border-color: #bbf7d0; color: #14532d; padding: 12px; }
+    .strategy-title { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+    .strategy-body { font-size: 12px; line-height: 1.5; }
+    .strategy-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .strategy-tag { font-size: 11px; color: #166534; background: #dcfce7; border: 1px solid #bbf7d0; border-radius: 999px; padding: 3px 8px; }
 
     /* Loading with quotes */
     .loading { text-align: center; padding: 32px; }
@@ -109,6 +114,7 @@
 
     <div id="profileSummary" class="profile-card"></div>
     <div id="selectedText" class="selected hidden"></div>
+    <div id="quizStrategy" class="card strategy-card hidden"></div>
 
     <div id="loading" class="loading hidden">
       <div class="spinner"></div>

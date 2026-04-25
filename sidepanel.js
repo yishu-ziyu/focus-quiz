@@ -14,6 +14,7 @@ const mistakeView = document.getElementById('mistakeView');
 const mistakeList = document.getElementById('mistakeList');
 const profileSummary = document.getElementById('profileSummary');
 const diagnosisDiv = document.getElementById('diagnosis');
+const quizStrategyDiv = document.getElementById('quizStrategy');
 const Learning = globalThis.FocusQuizLearning;
 
 let currentLearningProfile = null;
@@ -175,10 +176,11 @@ function renderLearningProfile(profile) {
   profileSummary.appendChild(summary);
 }
 
-function createQuizSession(text, questions, sourceMeta, providerMeta) {
+function createQuizSession(text, questions, sourceMeta, providerMeta, strategy = {}) {
   return {
     sessionId: `fq_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
     startedAt: Date.now(),
+    strategy,
     source: {
       mode: sourceMeta?.mode || 'selection',
       url: sourceMeta?.url || '',
@@ -201,7 +203,7 @@ function renderSessionDiagnosis() {
   const totalQuestions = currentQuizSession.questions.length;
   if (currentQuizSession.answers.length < totalQuestions) return;
 
-  const diagnosis = Learning.diagnoseSession(currentQuizSession.answers, currentLearningProfile);
+  const diagnosis = Learning.diagnoseSession(currentQuizSession.answers, currentLearningProfile, currentQuizSession.strategy);
   diagnosisDiv.replaceChildren();
 
   const title = document.createElement('div');
@@ -356,6 +358,8 @@ async function generateQuiz(text, sourceMeta = {}) {
   loadingDiv.classList.remove('hidden');
   errorDiv.classList.add('hidden');
   diagnosisDiv.classList.add('hidden');
+  quizStrategyDiv?.classList.add('hidden');
+  quizStrategyDiv?.replaceChildren();
   quizDiv.replaceChildren();
   startLoadingQuotes();
   await loadLearningProfile();
@@ -370,6 +374,12 @@ async function generateQuiz(text, sourceMeta = {}) {
 # Output Format
 严格返回以下 JSON 格式，不要有任何其他内容：
 {
+  "strategy": {
+    "questionCount": 3,
+    "articleType": "conceptual_argument",
+    "focus": ["trap", "counterfactual", "transfer"],
+    "reason": "为什么本轮选择这个题量和题型组合"
+  },
   "questions": [
     {
       "type": "trap",
@@ -396,9 +406,13 @@ async function generateQuiz(text, sourceMeta = {}) {
 }
 
 # Question Design Rules
-- Q1 概念陷阱题：选项必须包含"合理的错误归因"或"常见的望文生义"。正确选项不能是原文简单改写，必须是原文逻辑的**推论**。干扰项要极具迷惑性。
-- Q2 反事实推演：考察变量之间的**动态关系**，不是静态事实。
-- Q3 场景迁移：将逻辑迁移到完全不同的领域，考察深层理解。
+- questions.length 必须等于 strategy.questionCount，数量只能是 1、2、3。
+- 允许的 type 只有 trap、counterfactual、transfer。
+- trap 概念陷阱题：选项必须包含"合理的错误归因"或"常见的望文生义"。正确选项不能是原文简单改写，必须是原文逻辑的**推论**。干扰项要极具迷惑性。
+- counterfactual 反事实推演：考察变量之间的**动态关系**，不是静态事实。
+- transfer 场景迁移：将逻辑迁移到完全不同的领域，考察深层理解。
+- 冷启动时优先生成 3 道题，形成概念 -> 反事实 -> 迁移的完整梯度。
+- 已有用户画像时，先判断文章最需要检验的能力；如果文章强烈命中用户薄弱维度，可以只生成 1 道靶向题。
 
 # Explanation Rules
 - 如果选错，必须指出思维模型在哪里断裂（因果倒置？偷换概念？忽略前提？）
@@ -417,7 +431,9 @@ ${adaptivePrompt}
     const quizData = JSON.parse(content);
     const questions = renderQuiz(quizData);
     if (questions.length === 0) return;
-    currentQuizSession = createQuizSession(text, questions, sourceMeta, providerMeta);
+    const strategy = normalizeStrategy(quizData?.strategy, questions);
+    renderQuizStrategy(strategy, questions.length);
+    currentQuizSession = createQuizSession(text, questions, sourceMeta, providerMeta, strategy);
 
     // Streak: 成功生成 Quiz 后更新连续天数
     await updateStreak();
@@ -502,14 +518,66 @@ function renderQuiz(data) {
   return questions;
 }
 
+function normalizeStrategy(strategy, questions) {
+  const focus = Array.isArray(strategy?.focus)
+    ? strategy.focus.filter((type) => ['trap', 'counterfactual', 'transfer'].includes(type))
+    : questions.map((question) => question.type).filter(Boolean);
+  const count = questions.length;
+  return {
+    questionCount: count,
+    articleType: String(strategy?.articleType || 'adaptive_dose'),
+    focus: Array.from(new Set(focus.length ? focus : questions.map((question) => question.type))),
+    reason: String(strategy?.reason || (count === 3
+      ? '冷启动或完整校准，本轮保留三题梯度。'
+      : '根据文章结构和本地画像，本轮降低题量并进行靶向检验。'))
+  };
+}
+
+function renderQuizStrategy(strategy, actualCount) {
+  if (!quizStrategyDiv) return;
+  quizStrategyDiv.replaceChildren();
+
+  const typeLabels = {
+    trap: '概念边界',
+    counterfactual: '因果/反事实',
+    transfer: '场景迁移'
+  };
+
+  const title = document.createElement('div');
+  title.className = 'strategy-title';
+  title.textContent = `本轮策略：${actualCount}题 · ${strategy.articleType}`;
+  quizStrategyDiv.appendChild(title);
+
+  const body = document.createElement('div');
+  body.className = 'strategy-body';
+  body.textContent = strategy.reason;
+  quizStrategyDiv.appendChild(body);
+
+  if (strategy.focus.length) {
+    const tags = document.createElement('div');
+    tags.className = 'strategy-tags';
+    strategy.focus.forEach((type) => {
+      const tag = document.createElement('span');
+      tag.className = 'strategy-tag';
+      tag.textContent = typeLabels[type] || type;
+      tags.appendChild(tag);
+    });
+    quizStrategyDiv.appendChild(tags);
+  }
+
+  quizStrategyDiv.classList.remove('hidden');
+}
+
 function normalizeQuestions(data) {
   const rawQuestions = Array.isArray(data?.questions) ? data.questions : [];
-  return rawQuestions.map((q, idx) => {
+  const allowedTypes = ['trap', 'counterfactual', 'transfer'];
+  return rawQuestions.slice(0, 3).map((q, idx) => {
     const options = Array.isArray(q?.options) ? q.options.map((opt) => String(opt)) : [];
     const rawCorrect = Number.isInteger(q?.correct) ? q.correct : q?.correctAnswer;
     const correct = Number.isInteger(rawCorrect) ? rawCorrect : Number.parseInt(rawCorrect, 10);
+    const type = allowedTypes.includes(q?.type) ? q.type : (allowedTypes[idx] || 'trap');
     return {
-      type: q?.type || ['trap', 'counterfactual', 'transfer'][idx] || 'trap',
+      type,
       question: String(q?.question || `Q${idx + 1}`),
       options,
       correct,

@@ -237,3 +237,31 @@ Auto-updated by git hooks. Each commit appends an entry under the corresponding 
     - LEARNING_SCIENCE_NOTES.md
     - README.md
     - THREE_QUESTION_RATIONALE.md
+
+- [manual-sync] Working snapshot
+  - Time: 2026-04-25 22:11:29 +0800
+  - Branch: main
+  - Last commit: 255848e docs: add learning science notes
+  - Pending changes:
+    -  M LEARNING_SCIENCE_NOTES.md
+    -  M README.md
+    -  M RELEASE_CHECKLIST.md
+    -  M THREE_QUESTION_RATIONALE.md
+    -  M learning-profile.js
+    -  M sidepanel.html
+    -  M sidepanel.js
+    - ?? SHARE_TALK_DRAFT.md
+
+- Commit: feat: add adaptive question dose
+  - Time: 2026-04-25 22:12:16 +0800
+  - Stats: 9 files changed, 281 insertions(+), 36 deletions(-)
+  - Files:
+    - DEVELOPMENT_LOG.md
+    - LEARNING_SCIENCE_NOTES.md
+    - README.md
+    - RELEASE_CHECKLIST.md
+    - SHARE_TALK_DRAFT.md
+    - THREE_QUESTION_RATIONALE.md
+    - learning-profile.js
+    - sidepanel.html
+    - sidepanel.js

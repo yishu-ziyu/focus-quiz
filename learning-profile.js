@@ -132,9 +132,10 @@ function fqProfileSummary(overall, totalAttempts, weakest, targetDifficulty) {
 function fqAdaptivePrompt(profile) {
   if (!profile || !profile.enoughData) {
     return [
-      '# Adaptive Difficulty',
-      '- 当前用户样本不足，保持中等难度。',
-      '- 三道题需要形成梯度：概念边界 -> 因果/反事实 -> 场景迁移。',
+      '# Adaptive Question Dose',
+      '- 当前用户样本不足，使用冷启动策略：生成 3 道题。',
+      '- 3 道题需要形成梯度：概念边界 -> 因果/反事实 -> 场景迁移。',
+      '- strategy.questionCount 必须是 3。',
       '- 不要为了刁难而刁难，目标是制造恰到好处的认知阻力。'
     ].join('\n');
   }
@@ -147,15 +148,19 @@ function fqAdaptivePrompt(profile) {
   };
 
   return [
-    '# Adaptive Difficulty',
+    '# Adaptive Question Dose',
     `- 用户当前目标难度: ${profile.targetDifficulty}。${difficultyRules[profile.targetDifficulty]}`,
     weakEntry ? `- 用户当前薄弱维度: ${weakEntry.label}。${weakEntry.weakPrompt}` : '- 用户暂无明确薄弱维度。',
-    '- 如果用户薄弱维度不是本题类型，也要保持三题梯度，不要把三题都改成同一种题。',
+    '- 先判断文章的主要认知要求，再选择 1-3 道题，而不是机械固定三题。',
+    '- 如果文章强烈命中用户薄弱维度，可以只生成 1 道高质量靶向题，降低启动成本并切中要害。',
+    '- 如果文章同时涉及两个关键维度，生成 2 道题。',
+    '- 如果文章结构复杂、维度不明确、或需要重新校准画像，生成 3 道题形成完整梯度。',
+    '- strategy.questionCount 必须等于 questions.length，且只能是 1、2、3。',
     '- 题目必须有助于学习，不要制造无意义的文字游戏。'
   ].join('\n');
 }
 
-function fqDiagnoseSession(answers, profile) {
+function fqDiagnoseSession(answers, profile, strategy = {}) {
   const answered = Array.isArray(answers) ? answers.filter(Boolean) : [];
   const total = answered.length;
   const correct = answered.filter((answer) => answer.isCorrect).length;
@@ -166,7 +171,26 @@ function fqDiagnoseSession(answers, profile) {
   let status = '样本不足';
   let detail = '先完成本轮题目，系统会根据你的作答结构给出判断。';
 
-  if (total >= 3) {
+  if (total === 1) {
+    if (correct === 1) {
+      status = '靶向通过';
+      detail = '这轮只检查一个关键断点，你完成了这次最小剂量的主动回忆。';
+    } else {
+      status = '关键断点暴露';
+      detail = '这轮题量很少，但正好命中一个薄弱环节。建议顺着错题回到原文，重读相关论证。';
+    }
+  } else if (total === 2) {
+    if (correct === 2) {
+      status = '双点通过';
+      detail = '你通过了本轮两个关键维度的压力测试，说明这篇文章的核心逻辑已经比较稳。';
+    } else if (correct === 1) {
+      status = '局部断点';
+      detail = '你在一个维度上站住了，但另一个维度仍然暴露理解缺口。';
+    } else {
+      status = '双点失守';
+      detail = '这篇文章的关键逻辑还没有进入可检索状态，建议回到原文重新梳理定义和条件。';
+    }
+  } else if (total >= 3) {
     if (correct <= 1 || byType.trap?.isCorrect === false) {
       status = '表层读过';
       detail = '你可能保留了文章印象，但概念边界还没有稳住。建议先回到原文重看核心定义。';
@@ -185,11 +209,14 @@ function fqDiagnoseSession(answers, profile) {
   const recommendation = weakLabels.length
     ? `下一轮优先训练：${Array.from(new Set(weakLabels)).join('、')}。`
     : (profile?.summary || '继续保持三类题目的梯度训练。');
+  const strategyReason = typeof strategy?.reason === 'string' && strategy.reason.trim()
+    ? `本轮出题策略：${strategy.reason.trim()}`
+    : '';
 
   return {
     status,
     detail,
-    recommendation,
+    recommendation: strategyReason ? `${recommendation} ${strategyReason}` : recommendation,
     correct,
     total,
     weakTypes: wrongTypes

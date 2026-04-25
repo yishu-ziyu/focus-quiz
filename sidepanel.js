@@ -109,10 +109,13 @@ async function saveMistake(question, userChoiceIdx, correctIdx, explanation, opt
 async function renderMistakeLog() {
   const result = await chrome.storage.local.get(['mistakeLog']);
   const log = result.mistakeLog || [];
-  mistakeList.innerHTML = '';
+  mistakeList.replaceChildren();
 
   if (log.length === 0) {
-    mistakeList.innerHTML = '<div class="empty-state">暂无错题记录。<br/>去做几道题，有意识地犯点错吧 🧠</div>';
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.append('暂无错题记录。', document.createElement('br'), '去做几道题，有意识地犯点错吧。');
+    mistakeList.appendChild(empty);
     return;
   }
 
@@ -195,7 +198,7 @@ async function checkForText() {
 async function generateQuiz(text) {
   loadingDiv.classList.remove('hidden');
   errorDiv.classList.add('hidden');
-  quizDiv.innerHTML = '';
+  quizDiv.replaceChildren();
   startLoadingQuotes();
 
   const prompt = `# Role
@@ -246,7 +249,7 @@ async function generateQuiz(text) {
   try {
     // 使用 providers.js 的统一抽象层
     const content = await callLLM(prompt);
-    console.log('[Focus Quiz] Response:', content);
+    console.info('[Focus Quiz] Quiz generated');
 
     const quizData = JSON.parse(content);
     renderQuiz(quizData);
@@ -257,15 +260,7 @@ async function generateQuiz(text) {
     const errMsg = getErrorMessage(err);
     console.error('[Focus Quiz] Error:', errMsg, err);
     if (errMsg.includes('未配置') || errMsg.includes('missing')) {
-      errorDiv.innerHTML = `${errMsg} <br/><button id="errorSettingsBtn" style="margin-top:8px;padding:4px 8px;font-size:12px;cursor:pointer;background:#b91c1c;color:white;border:none;border-radius:4px;">前往设置</button>`;
-      
-      // 添加事件监听而不是行内 onclick 以符合 CSP
-      setTimeout(() => {
-        const btn = document.getElementById('errorSettingsBtn');
-        if (btn) btn.addEventListener('click', () => chrome.runtime.openOptionsPage());
-      }, 0);
-      
-      errorDiv.classList.remove('hidden');
+      showSettingsError(errMsg);
     } else {
       showError(errMsg);
     }
@@ -290,10 +285,11 @@ function getErrorMessage(err) {
 // 渲染题目
 // ========================
 function renderQuiz(data) {
-  quizDiv.innerHTML = '';
+  quizDiv.replaceChildren();
 
-  if (!data.questions || data.questions.length === 0) {
-    showError('No questions generated');
+  const questions = normalizeQuestions(data);
+  if (questions.length === 0) {
+    showError('没有生成可用题目。请换一段更完整的文本，或重试一次。');
     return;
   }
 
@@ -303,7 +299,7 @@ function renderQuiz(data) {
     'transfer': '场景迁移'
   };
 
-  data.questions.forEach((q, idx) => {
+  questions.forEach((q, idx) => {
     const div = document.createElement('div');
     div.className = 'card question';
     div.style.animationDelay = `${idx * 0.1}s`;
@@ -336,6 +332,22 @@ function renderQuiz(data) {
   });
 }
 
+function normalizeQuestions(data) {
+  const rawQuestions = Array.isArray(data?.questions) ? data.questions : [];
+  return rawQuestions.map((q, idx) => {
+    const options = Array.isArray(q?.options) ? q.options.map((opt) => String(opt)) : [];
+    const rawCorrect = Number.isInteger(q?.correct) ? q.correct : q?.correctAnswer;
+    const correct = Number.isInteger(rawCorrect) ? rawCorrect : Number.parseInt(rawCorrect, 10);
+    return {
+      type: q?.type || ['trap', 'counterfactual', 'transfer'][idx] || 'trap',
+      question: String(q?.question || `Q${idx + 1}`),
+      options,
+      correct,
+      explanation: String(q?.explanation || '模型未返回解析。')
+    };
+  }).filter((q) => q.options.length >= 2 && Number.isInteger(q.correct) && q.correct >= 0 && q.correct < q.options.length);
+}
+
 // ========================
 // 处理答案
 // ========================
@@ -346,7 +358,7 @@ function handleAnswer(btn, chosenIdx, correctIdx, explanation, container, questi
   const buttons = container.querySelectorAll('.option');
   buttons.forEach((b, i) => {
     b.classList.add('disabled');
-    b.onclick = null;
+    b.disabled = true;
     if (i === correctIdx) {
       b.classList.add('correct');
     }
@@ -361,9 +373,15 @@ function handleAnswer(btn, chosenIdx, correctIdx, explanation, container, questi
   // 显示解释
   const expDiv = document.createElement('div');
   expDiv.className = isCorrect ? 'explain correct-exp' : 'explain';
-  expDiv.innerHTML = isCorrect
-    ? `✓ ${explanation}`
-    : `⚠️ <strong>思维断裂点：</strong>${explanation}`;
+  if (isCorrect) {
+    expDiv.textContent = `✓ ${explanation}`;
+  } else {
+    expDiv.append('⚠️ ');
+    const label = document.createElement('strong');
+    label.textContent = '思维断裂点：';
+    expDiv.appendChild(label);
+    expDiv.append(explanation);
+  }
 
   // Growth Loop: 答错后追加分享按钮
   if (!isCorrect) {
@@ -385,6 +403,17 @@ function handleAnswer(btn, chosenIdx, correctIdx, explanation, container, questi
 // ========================
 function showError(msg) {
   errorDiv.textContent = msg;
+  errorDiv.classList.remove('hidden');
+}
+
+function showSettingsError(msg) {
+  errorDiv.textContent = '';
+  errorDiv.append(msg, document.createElement('br'));
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.textContent = '前往设置';
+  btn.addEventListener('click', () => chrome.runtime.openOptionsPage());
+  errorDiv.appendChild(btn);
   errorDiv.classList.remove('hidden');
 }
 

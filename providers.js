@@ -272,7 +272,11 @@ async function callGemini(prompt, config) {
   }
 
   const data = await response.json();
-  return data.candidates[0].content.parts[0].text;
+  const content = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!content) {
+    throw new Error(`Gemini 返回异常: ${JSON.stringify(data).slice(0, 220)}`);
+  }
+  return content;
 }
 
 // ========================
@@ -283,26 +287,48 @@ async function callOpenAICompat(prompt, config, baseURL, fallbackModel) {
   if (!apiKey) throw new Error('API Key 未配置。请点击 ⚙️ 前往设置。');
   const model = config.model || fallbackModel;
 
-  const response = await fetch(`${baseURL}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
+  const requestBody = {
       model: model,
       messages: [{ role: 'user', content: prompt + '\n\n请严格返回 JSON 格式，不要有任何其他内容。' }],
       response_format: { type: 'json_object' }
-    })
-  });
+    };
+
+  async function request(body) {
+    return fetch(`${baseURL}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`
+      },
+      body: JSON.stringify(body)
+    });
+  }
+
+  let response = await request(requestBody);
 
   if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(`API Error: ${err.error?.message || err.message || `HTTP ${response.status}`}`);
+    const errMessage = await readErrorMessage(response);
+    if (/response_format|json_object|unsupported|不支持/i.test(errMessage)) {
+      const fallbackResponse = await request({
+        model: requestBody.model,
+        messages: requestBody.messages
+      });
+      if (fallbackResponse.ok) {
+        response = fallbackResponse;
+      } else {
+        throw new Error(`API Error: ${await readErrorMessage(fallbackResponse)}`);
+      }
+    } else {
+      throw new Error(`API Error: ${errMessage}`);
+    }
   }
 
   const data = await response.json();
-  return data.choices[0].message.content;
+  const content = data?.choices?.[0]?.message?.content;
+  if (!content) {
+    throw new Error(`API 返回异常: ${JSON.stringify(data).slice(0, 220)}`);
+  }
+  return content;
 }
 
 // ========================
@@ -334,7 +360,11 @@ async function callAnthropic(prompt, config) {
   }
 
   const data = await response.json();
-  return data.content[0].text;
+  const content = data?.content?.[0]?.text;
+  if (!content) {
+    throw new Error(`Anthropic 返回异常: ${JSON.stringify(data).slice(0, 220)}`);
+  }
+  return content;
 }
 
 // ========================

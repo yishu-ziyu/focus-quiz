@@ -29,7 +29,9 @@
     @keyframes spin { to { transform: rotate(360deg); } }
     .loading-quote { margin-top: 12px; font-size: 13px; color: #71717a; font-style: italic; min-height: 20px; transition: opacity 0.3s ease; }
 
-    .error { background: #fef2f2; color: #b91c1c; padding: 12px; border-radius: 6px; font-size: 13px; margin-bottom: 16px; }
+    .error { background: #fef2f2; color: #b91c1c; padding: 12px; border-radius: 6px; font-size: 13px; margin-bottom: 16px; line-height: 1.5; }
+    .error button { margin-top: 8px; padding: 5px 10px; font-size: 12px; cursor: pointer; background: #b91c1c; color: white; border: none; border-radius: 4px; }
+    .error button:hover { background: #991b1b; }
 
     /* Question styling */
     .question { margin-bottom: 16px; animation: fadeIn 0.3s ease; }
@@ -88,7 +90,7 @@
     </div>
     <div id="streakBadge" class="streak-badge cold">🔥 Day 0</div>
     <p class="subtitle">The Inquisitor · 深度压力测试</p>
-    <p class="tip">选中网页文字 → 右键 → Generate Quiz</p>
+    <p class="tip">选中网页文字 → 右键 → Focus Quiz: 审问选中文本</p>
 
     <div id="selectedText" class="selected hidden"></div>
 

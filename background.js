@@ -2,7 +2,7 @@
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
     id: "generate-quiz",
-    title: "Generate Quiz",
+    title: "Focus Quiz: 审问选中文本",
     contexts: ["selection"]
   });
 
@@ -17,7 +17,7 @@ chrome.runtime.onInstalled.addListener(() => {
     }
   });
 
-  console.log("[Focus Quiz] Extension installed & data initialized");
+  console.info("[Focus Quiz] Extension installed & data initialized");
 });
 
 // 点击扩展图标时打开 Side Panel
@@ -28,8 +28,6 @@ chrome.action.onClicked.addListener((tab) => {
 // 点击右键菜单 - 这是用户手势，可以打开 Side Panel
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === "generate-quiz") {
-    console.log("[Focus Quiz] Menu clicked");
-
     // 保存选中的文本
     chrome.storage.local.set({
       selectedText: info.selectionText,

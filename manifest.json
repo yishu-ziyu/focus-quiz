@@ -1,24 +1,38 @@
 {
   "manifest_version": 3,
   "name": "Focus Quiz",
-  "version": "1.0",
-  "description": "Generate quizzes from selected text",
+  "version": "1.0.0",
+  "description": "Turn selected web text into retrieval, counterfactual, and transfer questions.",
   "permissions": ["sidePanel", "contextMenus", "storage", "activeTab"],
   "host_permissions": [
     "http://127.0.0.1/*",
-    "http://localhost/*"
+    "http://localhost/*",
+    "https://generativelanguage.googleapis.com/*",
+    "https://api.openai.com/*",
+    "https://api.anthropic.com/*",
+    "https://api.deepseek.com/*",
+    "https://open.bigmodel.cn/*",
+    "https://api.minimaxi.com/*",
+    "https://dashscope.aliyuncs.com/*"
   ],
   "background": {
     "service_worker": "background.js"
   },
   "action": {
-    "default_title": "Open Focus Quiz"
+    "default_title": "Open Focus Quiz",
+    "default_icon": {
+      "16": "assets/icons/icon16.png",
+      "48": "assets/icons/icon48.png",
+      "128": "assets/icons/icon128.png"
+    }
   },
   "side_panel": {
     "default_path": "sidepanel.html"
   },
   "icons": {
-    "48": "icon48.png"
+    "16": "assets/icons/icon16.png",
+    "48": "assets/icons/icon48.png",
+    "128": "assets/icons/icon128.png"
   },
   "options_ui": {
     "page": "options.html",

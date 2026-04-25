@@ -87,3 +87,53 @@ Auto-updated by git hooks. Each commit appends an entry under the corresponding 
   - Stats: 1 file changed, 70 insertions(+), 19 deletions(-)
   - Files:
     - README.md
+
+## 2026-04-25
+
+- [manual-sync] Working snapshot
+  - Time: 2026-04-25 13:53:33 +0800
+  - Branch: main
+  - Last commit: f458a69 docs: Rewrite README with PM-driven product positioning and multi-model support details
+  - Pending changes:
+    -  M README.md
+    -  M assets/icons/icon128.png
+    -  M assets/icons/icon16.png
+    -  M assets/icons/icon48.png
+    -  M background.js
+    -  M eval_prd.md
+    -  D icon48.png
+    -  M manifest.json
+    -  M providers.js
+    -  M sidepanel.html
+    -  M sidepanel.js
+    -  D src/background/service-worker.js
+    -  D src/lib/llm-client.js
+    -  D src/options/options.html
+    -  D src/options/options.js
+    -  D src/sidepanel/index.html
+    -  D src/sidepanel/index.js
+    - ?? RELEASE_CHECKLIST.md
+
+- Commit: chore: prepare focus quiz for release testing
+  - Time: 2026-04-25 14:39:38 +0800
+  - Stats: 19 files changed, 230 insertions(+), 686 deletions(-)
+  - Files:
+    - DEVELOPMENT_LOG.md
+    - README.md
+    - RELEASE_CHECKLIST.md
+    - assets/icons/icon128.png
+    - assets/icons/icon16.png
+    - assets/icons/icon48.png
+    - background.js
+    - eval_prd.md
+    - icon48.png
+    - manifest.json
+    - providers.js
+    - sidepanel.html
+    - sidepanel.js
+    - src/background/service-worker.js
+    - src/lib/llm-client.js
+    - src/options/options.html
+    - src/options/options.js
+    - src/sidepanel/index.html
+    - src/sidepanel/index.js

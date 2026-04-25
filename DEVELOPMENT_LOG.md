@@ -349,3 +349,31 @@ Auto-updated by git hooks. Each commit appends an entry under the corresponding 
     - RELEASE_EXECUTION_PLAN.md
     - sidepanel.html
     - sidepanel.js
+
+- [manual-sync] Working snapshot
+  - Time: 2026-04-26 01:22:56 +0800
+  - Branch: main
+  - Last commit: 8e7bfb2 fix: hide evidence until answer reveal
+  - Pending changes:
+    -  M PRODUCT_STRATEGY_NEXT.md
+    -  M README.md
+    -  M RELEASE_CHECKLIST.md
+    -  M RELEASE_EXECUTION_PLAN.md
+    -  M background.js
+    -  M learning-profile.js
+    -  M sidepanel.html
+    -  M sidepanel.js
+
+- Commit: feat: improve quiz mode controls and hint preferences
+  - Time: 2026-04-26 01:23:47 +0800
+  - Stats: 9 files changed, 154 insertions(+), 15 deletions(-)
+  - Files:
+    - DEVELOPMENT_LOG.md
+    - PRODUCT_STRATEGY_NEXT.md
+    - README.md
+    - RELEASE_CHECKLIST.md
+    - RELEASE_EXECUTION_PLAN.md
+    - background.js
+    - learning-profile.js
+    - sidepanel.html
+    - sidepanel.js

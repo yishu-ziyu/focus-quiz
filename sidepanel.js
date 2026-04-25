@@ -9,6 +9,9 @@ const loadingQuote = document.getElementById('loadingQuote');
 const errorDiv = document.getElementById('error');
 const quizDiv = document.getElementById('quiz');
 const streakBadge = document.getElementById('streakBadge');
+const selectionModeBtn = document.getElementById('selectionModeBtn');
+const fullPageModeBtn = document.getElementById('fullPageModeBtn');
+const modeHelp = document.getElementById('modeHelp');
 const mainView = document.getElementById('mainView');
 const mistakeView = document.getElementById('mistakeView');
 const mistakeList = document.getElementById('mistakeList');
@@ -22,6 +25,7 @@ const Learning = globalThis.FocusQuizLearning;
 let currentLearningProfile = null;
 let currentQuizSession = null;
 let lastQuizRequest = null;
+let hintVisible = true;
 
 // ========================
 // Inquisitor 审问语录池 (Product Taste: Loading State)
@@ -63,6 +67,51 @@ async function loadStreak() {
   const result = await chrome.storage.local.get(['lastQuizDate', 'streakCount']);
   const streak = result.streakCount || 0;
   renderStreak(streak);
+}
+
+async function loadHintPreference() {
+  const result = await chrome.storage.local.get(['hintVisible']);
+  hintVisible = result.hintVisible !== false;
+  applyHintVisibility();
+}
+
+async function setHintVisible(nextVisible) {
+  hintVisible = Boolean(nextVisible);
+  await chrome.storage.local.set({ hintVisible });
+  applyHintVisibility();
+}
+
+function applyHintVisibility(scope = document) {
+  scope.querySelectorAll?.('.hint').forEach((hint) => {
+    hint.classList.toggle('hidden-hint', !hintVisible);
+    const toggle = hint.querySelector('.hint-toggle');
+    if (toggle) toggle.textContent = hintVisible ? '隐藏' : '显示';
+  });
+}
+
+function setActiveMode(mode) {
+  selectionModeBtn?.classList.toggle('active', mode === 'selection');
+  fullPageModeBtn?.classList.toggle('active', mode === 'fullpage');
+}
+
+function showModeHelp(message) {
+  if (!modeHelp) return;
+  modeHelp.textContent = message;
+  modeHelp.classList.remove('hidden');
+}
+
+async function startFullPageFromSidePanel() {
+  setActiveMode('fullpage');
+  showModeHelp('正在尝试抓取当前网页正文。若抓取失败，可以改用选区模式选中核心段落。');
+  errorDiv.classList.add('hidden');
+  try {
+    const response = await chrome.runtime.sendMessage({ type: 'focusQuiz.startFullPage' });
+    if (response && response.ok === false) {
+      showError(response.error || '全文模式启动失败。请切回文章页后再试。');
+    }
+  } catch (err) {
+    showError(`全文模式启动失败：${getErrorMessage(err)}`);
+  }
 }
 
 function renderStreak(count) {
@@ -397,6 +446,8 @@ async function checkForText() {
       const mode = result.sourceMode || 'selection';
       const label = mode === 'fullpage' ? '全文模式' : '选区模式';
       const title = result.sourceTitle ? ` · ${result.sourceTitle}` : '';
+      setActiveMode(mode);
+      if (modeHelp) modeHelp.classList.add('hidden');
       selectedTextDiv.replaceChildren();
       const sourceLabel = document.createElement('div');
       sourceLabel.className = 'source-label';
@@ -643,11 +694,21 @@ function renderQuiz(data) {
 function renderHint(sourceHint) {
   const hint = document.createElement('div');
   hint.className = 'hint';
+  hint.classList.toggle('hidden-hint', !hintVisible);
   const label = document.createElement('span');
   label.className = 'hint-label';
   label.textContent = 'Hint';
+  const toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.className = 'hint-toggle';
+  toggle.textContent = hintVisible ? '隐藏' : '显示';
+  toggle.addEventListener('click', () => setHintVisible(!hintVisible));
+  hint.appendChild(toggle);
   hint.appendChild(label);
-  hint.append(sourceHint);
+  const content = document.createElement('span');
+  content.className = 'hint-content';
+  content.textContent = sourceHint;
+  hint.appendChild(content);
   return hint;
 }
 
@@ -861,6 +922,15 @@ document.getElementById('openMistakes').addEventListener('click', () => {
   renderMistakeLog();
 });
 
+selectionModeBtn?.addEventListener('click', () => {
+  setActiveMode('selection');
+  showModeHelp('选中网页里最想检验理解的段落，然后右键选择 “Focus Quiz: 审问选中文本”。选区模式更适合局部精读。');
+});
+
+fullPageModeBtn?.addEventListener('click', () => {
+  startFullPageFromSidePanel();
+});
+
 exportMistakesBtn?.addEventListener('click', () => {
   exportMistakesAsMarkdown();
 });
@@ -878,6 +948,7 @@ document.getElementById('openSettings').addEventListener('click', () => {
 // 启动
 // ========================
 loadStreak();
+loadHintPreference();
 loadLearningProfile();
 checkForText();
 

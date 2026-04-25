@@ -25,6 +25,22 @@ chrome.action.onClicked.addListener((tab) => {
   handleFullPageQuiz(tab);
 });
 
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message?.type !== 'focusQuiz.startFullPage') return false;
+
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    const tab = tabs?.[0];
+    if (!tab) {
+      sendResponse({ ok: false, error: '没有找到当前活动网页。请切回要审问的文章页后再试。' });
+      return;
+    }
+    handleFullPageQuiz(tab)
+      .then(() => sendResponse({ ok: true }))
+      .catch((err) => sendResponse({ ok: false, error: err?.message || String(err) }));
+  });
+  return true;
+});
+
 async function handleFullPageQuiz(tab) {
   if (!tab?.id || !tab?.windowId) return;
 

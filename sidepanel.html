@@ -81,6 +81,13 @@
 
     .subtitle { font-family: var(--serif); font-size: 12px; color: var(--ink-soft); margin-bottom: 10px; font-style: italic; }
     .tip { font-size: 12px; color: var(--ink-muted); margin-bottom: 16px; line-height: 1.55; }
+    .mode-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px; }
+    .mode-btn { text-align: left; padding: 10px 11px; border: 1px solid var(--rule); border-radius: 3px; background: rgba(255,255,255,0.42); color: var(--ink); cursor: pointer; min-height: 74px; }
+    .mode-btn:hover { background: var(--paper-deep); border-color: var(--rule-strong); }
+    .mode-btn strong { display: block; margin-bottom: 5px; font-family: var(--serif); font-size: 14px; }
+    .mode-btn span { display: block; font-size: 11px; line-height: 1.45; color: var(--ink-muted); }
+    .mode-btn.active { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+    .mode-help { margin-top: -6px; margin-bottom: 14px; padding: 9px 11px; border-left: 3px solid var(--rule-strong); background: rgba(243, 239, 228, 0.72); color: var(--ink-soft); font-size: 12px; line-height: 1.55; }
     .card { border: 1px solid var(--rule); border-radius: 3px; padding: 15px; margin-bottom: 15px; background: rgba(255,255,255,0.42); }
     .selected { background: rgba(243, 239, 228, 0.74); border-left: 3px solid var(--accent); border-radius: 2px; padding: 11px 12px; font-family: var(--serif); font-size: 12px; color: var(--ink-soft); margin-bottom: 15px; line-height: 1.65; }
     .source-label { display: block; font-family: var(--mono); font-size: 10px; font-weight: 600; color: var(--accent); margin-bottom: 6px; text-transform: uppercase; }
@@ -120,6 +127,9 @@
     .hint, .evidence { margin: 10px 0 12px; padding: 9px 10px; background: rgba(243, 239, 228, 0.72); border-left: 3px solid var(--rule-strong); color: var(--ink-soft); font-family: var(--serif); font-size: 12px; line-height: 1.58; }
     .hint { background: rgba(255,255,255,0.36); border-left-color: var(--rule); }
     .hint-label, .evidence-label { display: block; margin-bottom: 3px; font-family: var(--mono); font-size: 10px; color: var(--ink-muted); text-transform: uppercase; }
+    .hint-toggle { float: right; margin-top: -2px; border: 1px solid var(--rule); background: rgba(255,255,255,0.5); color: var(--ink-muted); border-radius: 999px; padding: 2px 7px; font-size: 10px; cursor: pointer; }
+    .hint-toggle:hover { color: var(--accent); border-color: var(--rule-strong); }
+    .hint.hidden-hint .hint-content { display: none; }
 
     /* Options with animations */
     .option { display: block; width: 100%; text-align: left; padding: 10px 12px; border: 1px solid var(--rule); border-radius: 2px; font-size: 13px; background: rgba(255,255,255,0.52); color: var(--ink); cursor: pointer; margin-bottom: 8px; line-height: 1.48; transition: all 0.2s ease; }
@@ -179,7 +189,19 @@
     </div>
     <div id="streakBadge" class="streak-badge cold">Day 0</div>
     <p class="subtitle">The Inquisitor · 深度压力测试</p>
-    <p class="tip">选中网页文字右键审问；或直接点击插件图标审问整篇文章。</p>
+    <p class="tip">先选择审问范围，再让模型追问你是否真的读懂。</p>
+
+    <div class="mode-panel" aria-label="审问模式">
+      <button id="selectionModeBtn" class="mode-btn" type="button">
+        <strong>选区模式</strong>
+        <span>选中网页核心段落后右键审问，适合局部精读。</span>
+      </button>
+      <button id="fullPageModeBtn" class="mode-btn" type="button">
+        <strong>全文模式</strong>
+        <span>直接抓取当前网页正文，适合读完整篇后自测。</span>
+      </button>
+    </div>
+    <div id="modeHelp" class="mode-help hidden"></div>
 
     <div id="profileSummary" class="profile-card">
       <div class="profile-top">

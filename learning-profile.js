@@ -3,6 +3,7 @@
 // psychometric assessment.
 
 const FQ_EVENT_LIMIT = 500;
+const FQ_COLD_START_ATTEMPTS = 6;
 const FQ_DIMENSIONS = {
   trap: {
     id: 'concept_boundary',
@@ -96,7 +97,7 @@ function fqBuildProfile(events) {
   const recentLatency = fqMean(recentEvents.slice(-12).map((event) => fqLatencyScore(event.latencyMs)));
 
   let targetDifficulty = 'medium';
-  if (totalAttempts < 9) {
+  if (totalAttempts < FQ_COLD_START_ATTEMPTS) {
     targetDifficulty = 'medium';
   } else if (weakest && weakest.score < 50) {
     targetDifficulty = 'easy';
@@ -112,14 +113,14 @@ function fqBuildProfile(events) {
     weakestDimension: weakest?.id || null,
     weakestLabel: weakest?.label || null,
     targetDifficulty,
-    enoughData: totalAttempts >= 9,
+    enoughData: totalAttempts >= FQ_COLD_START_ATTEMPTS,
     summary: fqProfileSummary(overall, totalAttempts, weakest, targetDifficulty)
   };
 }
 
 function fqProfileSummary(overall, totalAttempts, weakest, targetDifficulty) {
   if (totalAttempts < 3) return '样本不足。先完成几轮测试，系统会开始判断你的理解结构。';
-  if (totalAttempts < 9) return '正在冷启动。已有少量信号，但还不适合给稳定判断。';
+  if (totalAttempts < FQ_COLD_START_ATTEMPTS) return `正在冷启动。完成 ${FQ_COLD_START_ATTEMPTS} 道题后，系统会开始给出自适应判断。`;
   const difficultyText = {
     easy: '下一轮会降低抽象跨度，先稳住薄弱能力。',
     medium: '下一轮会保持必要难度，继续制造适度认知阻力。',

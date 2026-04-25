@@ -117,6 +117,8 @@
     .q-type.counterfactual { color: var(--accent-blue); }
     .q-type.transfer { color: var(--accent-green); }
     .q-text { font-family: var(--serif); font-size: 15px; font-weight: 700; margin-bottom: 13px; line-height: 1.62; }
+    .evidence { margin: 10px 0 12px; padding: 9px 10px; background: rgba(243, 239, 228, 0.72); border-left: 3px solid var(--rule-strong); color: var(--ink-soft); font-family: var(--serif); font-size: 12px; line-height: 1.58; }
+    .evidence-label { display: block; margin-bottom: 3px; font-family: var(--mono); font-size: 10px; color: var(--ink-muted); text-transform: uppercase; }
 
     /* Options with animations */
     .option { display: block; width: 100%; text-align: left; padding: 10px 12px; border: 1px solid var(--rule); border-radius: 2px; font-size: 13px; background: rgba(255,255,255,0.52); color: var(--ink); cursor: pointer; margin-bottom: 8px; line-height: 1.48; transition: all 0.2s ease; }
@@ -144,8 +146,11 @@
     /* Mistake Log View */
     .mistake-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
     .mistake-header h2 { font-family: var(--serif); font-size: 18px; font-weight: 700; }
+    .mistake-actions { display: flex; gap: 8px; align-items: center; }
     .back-btn { font-size: 13px; color: var(--ink-muted); cursor: pointer; background: none; border: none; text-decoration: underline; }
     .back-btn:hover { color: var(--accent); }
+    .export-btn { font-size: 12px; color: var(--ink-soft); cursor: pointer; background: transparent; border: 1px solid var(--rule); border-radius: 2px; padding: 5px 8px; }
+    .export-btn:hover { color: var(--accent); background: var(--paper-deep); }
     .mistake-item { border: 1px solid var(--rule); border-radius: 3px; padding: 12px; margin-bottom: 12px; background: rgba(255,255,255,0.38); }
     .mistake-item .q-text { font-size: 13px; margin-bottom: 8px; }
     .mistake-meta { font-family: var(--mono); font-size: 10px; color: var(--ink-muted); margin-bottom: 6px; }
@@ -153,7 +158,9 @@
     .mistake-source a { color: var(--accent-blue); text-decoration: underline; }
     .mistake-your-answer { font-size: 12px; color: var(--accent); margin-bottom: 4px; }
     .mistake-correct-answer { font-size: 12px; color: var(--accent-green); margin-bottom: 8px; }
+    .mistake-evidence { font-size: 12px; color: var(--ink-soft); background: rgba(243, 239, 228, 0.72); border-left: 3px solid var(--rule-strong); padding: 8px; margin-bottom: 8px; line-height: 1.45; }
     .mistake-explain { font-size: 12px; color: #6f4615; background: var(--wash-amber); padding: 8px; border-radius: 2px; line-height: 1.45; }
+    .export-status { min-height: 16px; margin-bottom: 10px; font-size: 11px; color: var(--accent-green); }
     .empty-state { text-align: center; padding: 32px 12px; color: var(--ink-muted); font-family: var(--serif); font-size: 13px; line-height: 1.6; }
 
     .hidden { display: none; }
@@ -198,8 +205,12 @@
   <div id="mistakeView" class="hidden">
     <div class="mistake-header">
       <h2>思维断裂档案</h2>
-      <button id="backToQuiz" class="back-btn">← 返回</button>
+      <div class="mistake-actions">
+        <button id="exportMistakes" class="export-btn">导出 Markdown</button>
+        <button id="backToQuiz" class="back-btn">← 返回</button>
+      </div>
     </div>
+    <div id="exportStatus" class="export-status"></div>
     <div id="mistakeList"></div>
   </div>
 

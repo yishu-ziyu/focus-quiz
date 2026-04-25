@@ -12,6 +12,8 @@ const streakBadge = document.getElementById('streakBadge');
 const mainView = document.getElementById('mainView');
 const mistakeView = document.getElementById('mistakeView');
 const mistakeList = document.getElementById('mistakeList');
+const exportMistakesBtn = document.getElementById('exportMistakes');
+const exportStatus = document.getElementById('exportStatus');
 const profileSummary = document.getElementById('profileSummary');
 const diagnosisDiv = document.getElementById('diagnosis');
 const quizStrategyDiv = document.getElementById('quizStrategy');
@@ -19,6 +21,7 @@ const Learning = globalThis.FocusQuizLearning;
 
 let currentLearningProfile = null;
 let currentQuizSession = null;
+let lastQuizRequest = null;
 
 // ========================
 // Inquisitor 审问语录池 (Product Taste: Loading State)
@@ -97,7 +100,7 @@ async function updateStreak() {
 // ========================
 // 错题本系统 (Behavioral Design: Loss Aversion + Growth Loop)
 // ========================
-async function saveMistake(question, userChoiceIdx, correctIdx, explanation, options) {
+async function saveMistake(question, userChoiceIdx, correctIdx, explanation, options, evidenceQuote = '', sourceHint = '') {
   const result = await chrome.storage.local.get(['mistakeLog']);
   const log = result.mistakeLog || [];
   log.unshift({
@@ -105,6 +108,8 @@ async function saveMistake(question, userChoiceIdx, correctIdx, explanation, opt
     userChoice: options[userChoiceIdx],
     correctAnswer: options[correctIdx],
     explanation: explanation,
+    evidenceQuote,
+    sourceHint,
     timestamp: Date.now(),
     sourceUrl: currentQuizSession?.source?.url || '',
     sourceTitle: currentQuizSession?.source?.title || ''
@@ -237,6 +242,8 @@ async function renderMistakeLog() {
   const result = await chrome.storage.local.get(['mistakeLog']);
   const log = result.mistakeLog || [];
   mistakeList.replaceChildren();
+  if (exportStatus) exportStatus.textContent = '';
+  if (exportMistakesBtn) exportMistakesBtn.disabled = log.length === 0;
 
   if (log.length === 0) {
     const empty = document.createElement('div');
@@ -282,6 +289,14 @@ async function renderMistakeLog() {
     correctAns.textContent = `正确答案: ${item.correctAnswer}`;
     div.appendChild(correctAns);
 
+    const evidenceText = item.evidenceQuote || item.sourceHint;
+    if (evidenceText) {
+      const evidence = document.createElement('div');
+      evidence.className = 'mistake-evidence';
+      evidence.textContent = `证据片段: ${evidenceText}`;
+      div.appendChild(evidence);
+    }
+
     const exp = document.createElement('div');
     exp.className = 'mistake-explain';
     exp.textContent = `思维断裂点: ${item.explanation}`;
@@ -311,6 +326,58 @@ function shareQuestion(questionText, explanation) {
       }
     });
   });
+}
+
+function cleanMarkdown(value) {
+  return String(value || '').replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function formatMistakesAsMarkdown(log) {
+  const exportedAt = new Date().toLocaleString('zh-CN');
+  const lines = [
+    '# Focus Quiz 错题导出',
+    '',
+    `导出时间：${exportedAt}`,
+    ''
+  ];
+
+  log.forEach((item, idx) => {
+    const sourceTitle = cleanMarkdown(item.sourceTitle || '原文');
+    const sourceUrl = cleanMarkdown(item.sourceUrl);
+    const evidence = cleanMarkdown(item.evidenceQuote || item.sourceHint);
+
+    lines.push(`## ${idx + 1}. ${cleanMarkdown(item.question)}`);
+    lines.push('');
+    lines.push(`- 时间：${new Date(item.timestamp).toLocaleString('zh-CN')}`);
+    if (sourceUrl) lines.push(`- 原文：[${sourceTitle}](${sourceUrl})`);
+    lines.push(`- 我的选择：${cleanMarkdown(item.userChoice)}`);
+    lines.push(`- 正确答案：${cleanMarkdown(item.correctAnswer)}`);
+    lines.push(`- 思维断裂点：${cleanMarkdown(item.explanation)}`);
+    if (evidence) {
+      lines.push('');
+      lines.push('> 证据片段：' + evidence);
+    }
+    lines.push('');
+  });
+
+  return lines.join('\n');
+}
+
+async function exportMistakesAsMarkdown() {
+  const result = await chrome.storage.local.get(['mistakeLog']);
+  const log = Array.isArray(result.mistakeLog) ? result.mistakeLog : [];
+  if (!log.length) {
+    if (exportStatus) exportStatus.textContent = '暂无错题可导出。';
+    return;
+  }
+
+  const markdown = formatMistakesAsMarkdown(log);
+  try {
+    await navigator.clipboard.writeText(markdown);
+    if (exportStatus) exportStatus.textContent = `已复制 ${log.length} 条错题为 Markdown。`;
+  } catch (err) {
+    if (exportStatus) exportStatus.textContent = `导出失败：${getErrorMessage(err)}`;
+  }
 }
 
 // ========================
@@ -355,6 +422,7 @@ async function checkForText() {
 // 生成 Quiz
 // ========================
 async function generateQuiz(text, sourceMeta = {}) {
+  lastQuizRequest = { text, sourceMeta };
   loadingDiv.classList.remove('hidden');
   errorDiv.classList.add('hidden');
   diagnosisDiv.classList.add('hidden');
@@ -386,21 +454,27 @@ async function generateQuiz(text, sourceMeta = {}) {
       "question": "Q1 [概念陷阱题]: 题目内容",
       "options": ["选项A", "选项B", "选项C", "选项D"],
       "correct": 0,
-      "explanation": "指出错误选项的思维陷阱：是因果倒置？偷换概念？还是忽略了前提？"
+      "explanation": "指出错误选项的思维陷阱：是因果倒置？偷换概念？还是忽略了前提？",
+      "evidenceQuote": "原文中最能支持这道题的短句或片段",
+      "sourceHint": "如果无法逐字引用，说明它对应原文的哪一段论证"
     },
     {
       "type": "counterfactual",
       "question": "Q2 [反事实推演]: 如果文中条件A变为非A，结论B会如何变化？",
       "options": ["变化描述A", "变化描述B", "变化描述C", "变化描述D"],
       "correct": 0,
-      "explanation": "揭示变量之间的动态关系，而非静态事实"
+      "explanation": "揭示变量之间的动态关系，而非静态事实",
+      "evidenceQuote": "原文中最能支持这道题的短句或片段",
+      "sourceHint": "如果无法逐字引用，说明它对应原文的哪一段论证"
     },
     {
       "type": "transfer",
       "question": "Q3 [场景迁移]: 在[完全不同的场景X]中，文中逻辑如何应用？",
       "options": ["做法A", "做法B", "做法C", "做法D"],
       "correct": 0,
-      "explanation": "考察去语境化的迁移能力，指出深层逻辑"
+      "explanation": "考察去语境化的迁移能力，指出深层逻辑",
+      "evidenceQuote": "原文中最能支持这道题的短句或片段",
+      "sourceHint": "如果无法逐字引用，说明它对应原文的哪一段论证"
     }
   ]
 }
@@ -413,6 +487,7 @@ async function generateQuiz(text, sourceMeta = {}) {
 - transfer 场景迁移：将逻辑迁移到完全不同的领域，考察深层理解。
 - 冷启动时优先生成 3 道题，形成概念 -> 反事实 -> 迁移的完整梯度。
 - 已有用户画像时，先判断文章最需要检验的能力；如果文章强烈命中用户薄弱维度，可以只生成 1 道靶向题。
+- 每道题必须返回 evidenceQuote 或 sourceHint。evidenceQuote 应该短而具体，避免大段复制原文；sourceHint 用于说明这道题对应原文的哪一段论证。
 
 # Explanation Rules
 - 如果选错，必须指出思维模型在哪里断裂（因果倒置？偷换概念？忽略前提？）
@@ -428,9 +503,12 @@ ${adaptivePrompt}
     const content = await callLLM(prompt);
     console.info('[Focus Quiz] Quiz generated');
 
-    const quizData = JSON.parse(content);
+    const quizData = parseQuizJSON(content);
     const questions = renderQuiz(quizData);
-    if (questions.length === 0) return;
+    if (questions.length === 0) {
+      showRetryError('模型返回了空题目或题目字段不完整。请重试生成，或换一个更稳定的模型。');
+      return;
+    }
     const strategy = normalizeStrategy(quizData?.strategy, questions);
     renderQuizStrategy(strategy, questions.length);
     currentQuizSession = createQuizSession(text, questions, sourceMeta, providerMeta, strategy);
@@ -443,7 +521,7 @@ ${adaptivePrompt}
     if (errMsg.includes('未配置') || errMsg.includes('missing')) {
       showSettingsError(errMsg);
     } else {
-      showError(errMsg);
+      showRetryError(toFriendlyGenerationError(errMsg));
     }
   } finally {
     loadingDiv.classList.add('hidden');
@@ -462,11 +540,47 @@ function getErrorMessage(err) {
   }
 }
 
+function parseQuizJSON(content) {
+  const text = String(content || '').trim();
+  if (!text) throw new Error('模型返回为空。请重试生成，或换一个更稳定的模型。');
+  try {
+    return JSON.parse(text);
+  } catch (_directErr) {
+    const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+    const candidate = fenced?.[1]?.trim() || text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1);
+    if (candidate && candidate.startsWith('{') && candidate.endsWith('}')) {
+      try {
+        return JSON.parse(candidate);
+      } catch (_candidateErr) {
+        // Fall through to the user-facing error below.
+      }
+    }
+    throw new Error('模型返回的题目结构不是有效 JSON。请重试生成，或换一个更稳定的模型。');
+  }
+}
+
+function toFriendlyGenerationError(message) {
+  const raw = String(message || '生成失败。');
+  const lower = raw.toLowerCase();
+  const hints = [];
+  if (/json|返回的内容|valid/.test(lower)) {
+    hints.push('模型没有严格返回 JSON，可以直接重试，或换用更遵守格式的模型。');
+  }
+  if (/token|context|length|too long|maximum|413|文本|超长|上下文/.test(lower)) {
+    hints.push('如果这是全文模式，建议先改用选区模式，或选择更长上下文的模型。');
+  }
+  if (/timeout|network|failed to fetch|超时|网络/.test(lower)) {
+    hints.push('这更像网络或 Provider 临时失败，可以稍后重试。');
+  }
+  return hints.length ? `${raw}\n\n建议：${hints.join(' ')}` : raw;
+}
+
 // ========================
 // 渲染题目
 // ========================
 function renderQuiz(data) {
   quizDiv.replaceChildren();
+  errorDiv.classList.add('hidden');
 
   const questions = normalizeQuestions(data);
   if (questions.length === 0) {
@@ -487,6 +601,8 @@ function renderQuiz(data) {
     div.dataset.index = String(idx);
     div.dataset.type = q.type;
     div.dataset.startedAt = String(Date.now());
+    div.dataset.evidenceQuote = q.evidenceQuote || '';
+    div.dataset.sourceHint = q.sourceHint || '';
 
     if (q.type) {
       const typeTag = document.createElement('span');
@@ -500,6 +616,10 @@ function renderQuiz(data) {
     title.textContent = q.question;
     div.appendChild(title);
 
+    if (q.evidenceQuote || q.sourceHint) {
+      div.appendChild(renderEvidence(q.evidenceQuote, q.sourceHint));
+    }
+
     const optionsDiv = document.createElement('div');
 
     q.options.forEach((opt, i) => {
@@ -507,7 +627,7 @@ function renderQuiz(data) {
       btn.className = 'option';
       btn.textContent = opt;
       // 使用 addEventListener 代替 onclick 以符合 CSP 规范
-      btn.addEventListener('click', () => handleAnswer(btn, i, q.correct, q.explanation, optionsDiv, q.question, q.options));
+      btn.addEventListener('click', () => handleAnswer(btn, i, q.correct, q.explanation, optionsDiv, q.question, q.options, q.evidenceQuote, q.sourceHint));
       optionsDiv.appendChild(btn);
     });
 
@@ -516,6 +636,17 @@ function renderQuiz(data) {
   });
 
   return questions;
+}
+
+function renderEvidence(evidenceQuote, sourceHint) {
+  const evidence = document.createElement('div');
+  evidence.className = 'evidence';
+  const label = document.createElement('span');
+  label.className = 'evidence-label';
+  label.textContent = evidenceQuote ? 'Evidence' : 'Source Hint';
+  evidence.appendChild(label);
+  evidence.append(evidenceQuote || sourceHint);
+  return evidence;
 }
 
 function normalizeStrategy(strategy, questions) {
@@ -581,7 +712,9 @@ function normalizeQuestions(data) {
       question: String(q?.question || `Q${idx + 1}`),
       options,
       correct,
-      explanation: String(q?.explanation || '模型未返回解析。')
+      explanation: String(q?.explanation || '模型未返回解析。'),
+      evidenceQuote: String(q?.evidenceQuote || '').trim(),
+      sourceHint: String(q?.sourceHint || '').trim()
     };
   }).filter((q) => q.options.length >= 2 && Number.isInteger(q.correct) && q.correct >= 0 && q.correct < q.options.length);
 }
@@ -589,10 +722,9 @@ function normalizeQuestions(data) {
 // ========================
 // 处理答案
 // ========================
-async function handleAnswer(btn, chosenIdx, correctIdx, explanation, container, questionText, options) {
+async function handleAnswer(btn, chosenIdx, correctIdx, explanation, container, questionText, options, evidenceQuote = '', sourceHint = '') {
   const isCorrect = chosenIdx === correctIdx;
   const questionCard = container.closest('.question');
-  const questionIndex = Number.parseInt(questionCard?.dataset.index || '-1', 10);
   const questionType = questionCard?.dataset.type || '';
   const questionStartedAt = Number.parseInt(questionCard?.dataset.startedAt || String(Date.now()), 10);
 
@@ -609,7 +741,7 @@ async function handleAnswer(btn, chosenIdx, correctIdx, explanation, container, 
   if (!isCorrect) {
     btn.classList.add('wrong');
     // 错题沉淀到本地
-    await saveMistake(questionText, chosenIdx, correctIdx, explanation, options);
+    await saveMistake(questionText, chosenIdx, correctIdx, explanation, options, evidenceQuote, sourceHint);
   }
 
   const latencyMs = Date.now() - questionStartedAt;
@@ -620,6 +752,8 @@ async function handleAnswer(btn, chosenIdx, correctIdx, explanation, container, 
     correctIndex: correctIdx,
     chosenIndex: chosenIdx,
     isCorrect,
+    evidenceQuote,
+    sourceHint,
     latencyMs
   };
   if (currentQuizSession) {
@@ -647,6 +781,9 @@ async function handleAnswer(btn, chosenIdx, correctIdx, explanation, container, 
     expDiv.appendChild(label);
     expDiv.append(explanation);
   }
+  if (evidenceQuote || sourceHint) {
+    expDiv.appendChild(renderEvidence(evidenceQuote, sourceHint));
+  }
 
   // Growth Loop: 答错后追加分享按钮
   if (!isCorrect) {
@@ -672,6 +809,23 @@ function showError(msg) {
   errorDiv.classList.remove('hidden');
 }
 
+function showRetryError(msg) {
+  errorDiv.textContent = '';
+  const text = document.createElement('div');
+  text.textContent = msg;
+  errorDiv.appendChild(text);
+
+  if (lastQuizRequest?.text) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = '重试生成';
+    btn.addEventListener('click', () => generateQuiz(lastQuizRequest.text, lastQuizRequest.sourceMeta));
+    errorDiv.appendChild(btn);
+  }
+
+  errorDiv.classList.remove('hidden');
+}
+
 function showSettingsError(msg) {
   errorDiv.textContent = '';
   errorDiv.append(msg, document.createElement('br'));
@@ -690,6 +844,10 @@ document.getElementById('openMistakes').addEventListener('click', () => {
   mainView.classList.add('hidden');
   mistakeView.classList.remove('hidden');
   renderMistakeLog();
+});
+
+exportMistakesBtn?.addEventListener('click', () => {
+  exportMistakesAsMarkdown();
 });
 
 document.getElementById('backToQuiz').addEventListener('click', () => {

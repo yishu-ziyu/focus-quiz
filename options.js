@@ -213,7 +213,7 @@ saveBtn.addEventListener('click', async () => {
   }
 
   await chrome.storage.local.set(saveData);
-  showStatus(`✓ 已保存！当前使用: ${preset.name} / ${config.model}`, true);
+  showStatus(`已保存。当前使用: ${preset.name} / ${config.model}`, true);
 });
 
 async function loadConfig() {

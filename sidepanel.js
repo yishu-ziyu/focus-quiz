@@ -64,10 +64,10 @@ async function loadStreak() {
 
 function renderStreak(count) {
   if (count > 0) {
-    streakBadge.textContent = `🔥 Day ${count}`;
+    streakBadge.textContent = `Day ${count}`;
     streakBadge.classList.remove('cold');
   } else {
-    streakBadge.textContent = '🔥 Day 0';
+    streakBadge.textContent = 'Day 0';
     streakBadge.classList.add('cold');
   }
 }
@@ -274,17 +274,17 @@ async function renderMistakeLog() {
 
     const yourAns = document.createElement('div');
     yourAns.className = 'mistake-your-answer';
-    yourAns.textContent = `✗ 你的选择: ${item.userChoice}`;
+    yourAns.textContent = `你的选择: ${item.userChoice}`;
     div.appendChild(yourAns);
 
     const correctAns = document.createElement('div');
     correctAns.className = 'mistake-correct-answer';
-    correctAns.textContent = `✓ 正确答案: ${item.correctAnswer}`;
+    correctAns.textContent = `正确答案: ${item.correctAnswer}`;
     div.appendChild(correctAns);
 
     const exp = document.createElement('div');
     exp.className = 'mistake-explain';
-    exp.textContent = `⚠️ 思维断裂点: ${item.explanation}`;
+    exp.textContent = `思维断裂点: ${item.explanation}`;
     div.appendChild(exp);
 
     mistakeList.appendChild(div);
@@ -302,10 +302,10 @@ function shareQuestion(questionText, explanation) {
     const btns = document.querySelectorAll('.share-btn');
     btns.forEach(btn => {
       if (btn.dataset.question === questionText) {
-        btn.textContent = '✅ 已复制';
+        btn.textContent = '已复制';
         btn.classList.add('copied');
         setTimeout(() => {
-          btn.textContent = '📤 分享这道题';
+          btn.textContent = '分享这道题';
           btn.classList.remove('copied');
         }, 2000);
       }
@@ -640,9 +640,8 @@ async function handleAnswer(btn, chosenIdx, correctIdx, explanation, container, 
   const expDiv = document.createElement('div');
   expDiv.className = isCorrect ? 'explain correct-exp' : 'explain';
   if (isCorrect) {
-    expDiv.textContent = `✓ ${explanation}`;
+    expDiv.textContent = explanation;
   } else {
-    expDiv.append('⚠️ ');
     const label = document.createElement('strong');
     label.textContent = '思维断裂点：';
     expDiv.appendChild(label);
@@ -653,7 +652,7 @@ async function handleAnswer(btn, chosenIdx, correctIdx, explanation, container, 
   if (!isCorrect) {
     const shareBtn = document.createElement('button');
     shareBtn.className = 'share-btn';
-    shareBtn.textContent = '📤 分享这道题';
+    shareBtn.textContent = '分享这道题';
     shareBtn.dataset.question = questionText;
     // 使用 addEventListener
     shareBtn.addEventListener('click', () => shareQuestion(questionText, explanation));

@@ -265,3 +265,23 @@ Auto-updated by git hooks. Each commit appends an entry under the corresponding 
     - learning-profile.js
     - sidepanel.html
     - sidepanel.js
+
+- [manual-sync] Working snapshot
+  - Time: 2026-04-25 23:55:29 +0800
+  - Branch: main
+  - Last commit: 19316c7 feat: add adaptive question dose
+  - Pending changes:
+    -  M options.html
+    -  M options.js
+    -  M sidepanel.html
+    -  M sidepanel.js
+
+- Commit: style: refine academic paper interface
+  - Time: 2026-04-25 23:55:42 +0800
+  - Stats: 5 files changed, 222 insertions(+), 112 deletions(-)
+  - Files:
+    - DEVELOPMENT_LOG.md
+    - options.html
+    - options.js
+    - sidepanel.html
+    - sidepanel.js

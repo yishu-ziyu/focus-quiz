@@ -157,7 +157,7 @@
     /* Mistake Log View */
     .mistake-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
     .mistake-header h2 { font-family: var(--serif); font-size: 18px; font-weight: 700; }
-    .mistake-actions { display: flex; gap: 8px; align-items: center; }
+    .mistake-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; align-items: center; }
     .back-btn { font-size: 13px; color: var(--ink-muted); cursor: pointer; background: none; border: none; text-decoration: underline; }
     .back-btn:hover { color: var(--accent); }
     .export-btn { font-size: 12px; color: var(--ink-soft); cursor: pointer; background: transparent; border: 1px solid var(--rule); border-radius: 2px; padding: 5px 8px; }
@@ -229,7 +229,8 @@
     <div class="mistake-header">
       <h2>思维断裂档案</h2>
       <div class="mistake-actions">
-        <button id="exportMistakes" class="export-btn">导出 Markdown</button>
+        <button id="copyMistakes" class="export-btn">复制 Markdown</button>
+        <button id="exportMistakes" class="export-btn">保存 .md</button>
         <button id="backToQuiz" class="back-btn">← 返回</button>
       </div>
     </div>

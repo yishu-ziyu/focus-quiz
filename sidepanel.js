@@ -15,6 +15,7 @@ const modeHelp = document.getElementById('modeHelp');
 const mainView = document.getElementById('mainView');
 const mistakeView = document.getElementById('mistakeView');
 const mistakeList = document.getElementById('mistakeList');
+const copyMistakesBtn = document.getElementById('copyMistakes');
 const exportMistakesBtn = document.getElementById('exportMistakes');
 const exportStatus = document.getElementById('exportStatus');
 const profileSummary = document.getElementById('profileSummary');
@@ -292,6 +293,7 @@ async function renderMistakeLog() {
   const log = result.mistakeLog || [];
   mistakeList.replaceChildren();
   if (exportStatus) exportStatus.textContent = '';
+  if (copyMistakesBtn) copyMistakesBtn.disabled = log.length === 0;
   if (exportMistakesBtn) exportMistakesBtn.disabled = log.length === 0;
 
   if (log.length === 0) {
@@ -412,20 +414,95 @@ function formatMistakesAsMarkdown(log) {
   return lines.join('\n');
 }
 
-async function exportMistakesAsMarkdown() {
+function formatExportFileStamp(date = new Date()) {
+  const pad = (value) => String(value).padStart(2, '0');
+  return [
+    date.getFullYear(),
+    pad(date.getMonth() + 1),
+    pad(date.getDate())
+  ].join('') + '-' + [
+    pad(date.getHours()),
+    pad(date.getMinutes()),
+    pad(date.getSeconds())
+  ].join('');
+}
+
+function getMistakeExportFilename() {
+  return `focus-quiz-mistakes-${formatExportFileStamp()}.md`;
+}
+
+async function getMistakeMarkdown() {
   const result = await chrome.storage.local.get(['mistakeLog']);
   const log = Array.isArray(result.mistakeLog) ? result.mistakeLog : [];
   if (!log.length) {
     if (exportStatus) exportStatus.textContent = '暂无错题可导出。';
-    return;
+    return null;
   }
 
-  const markdown = formatMistakesAsMarkdown(log);
+  return {
+    markdown: formatMistakesAsMarkdown(log),
+    count: log.length
+  };
+}
+
+async function copyMistakesAsMarkdown() {
+  const exportData = await getMistakeMarkdown();
+  if (!exportData) return;
+
   try {
-    await navigator.clipboard.writeText(markdown);
-    if (exportStatus) exportStatus.textContent = `已复制 ${log.length} 条错题为 Markdown。`;
+    await navigator.clipboard.writeText(exportData.markdown);
+    if (exportStatus) exportStatus.textContent = `已复制 ${exportData.count} 条错题为 Markdown。`;
   } catch (err) {
-    if (exportStatus) exportStatus.textContent = `导出失败：${getErrorMessage(err)}`;
+    if (exportStatus) exportStatus.textContent = `复制失败：${getErrorMessage(err)}`;
+  }
+}
+
+async function saveMarkdownFile(markdown, filename) {
+  if (typeof window.showSaveFilePicker === 'function') {
+    try {
+      const handle = await window.showSaveFilePicker({
+        suggestedName: filename,
+        types: [{
+          description: 'Markdown',
+          accept: { 'text/markdown': ['.md'] }
+        }]
+      });
+      const writable = await handle.createWritable();
+      await writable.write(markdown);
+      await writable.close();
+      return 'picker';
+    } catch (err) {
+      if (err?.name === 'AbortError') throw err;
+    }
+  }
+
+  const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.rel = 'noreferrer';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return 'download';
+}
+
+async function exportMistakesAsMarkdownFile() {
+  const exportData = await getMistakeMarkdown();
+  if (!exportData) return;
+
+  const filename = getMistakeExportFilename();
+  try {
+    await saveMarkdownFile(exportData.markdown, filename);
+    if (exportStatus) exportStatus.textContent = `已导出 ${exportData.count} 条错题：${filename}`;
+  } catch (err) {
+    if (err?.name === 'AbortError') {
+      if (exportStatus) exportStatus.textContent = '已取消保存。';
+      return;
+    }
+    if (exportStatus) exportStatus.textContent = `保存失败：${getErrorMessage(err)}`;
   }
 }
 
@@ -931,8 +1008,12 @@ fullPageModeBtn?.addEventListener('click', () => {
   startFullPageFromSidePanel();
 });
 
+copyMistakesBtn?.addEventListener('click', () => {
+  copyMistakesAsMarkdown();
+});
+
 exportMistakesBtn?.addEventListener('click', () => {
-  exportMistakesAsMarkdown();
+  exportMistakesAsMarkdownFile();
 });
 
 document.getElementById('backToQuiz').addEventListener('click', () => {

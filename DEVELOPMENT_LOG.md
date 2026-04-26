@@ -377,3 +377,40 @@ Auto-updated by git hooks. Each commit appends an entry under the corresponding 
     - learning-profile.js
     - sidepanel.html
     - sidepanel.js
+
+- [manual-sync] Working snapshot
+  - Time: 2026-04-26 13:23:09 +0800
+  - Branch: main
+  - Last commit: 293ab4f feat: improve quiz mode controls and hint preferences
+  - Pending changes:
+    -  M PRODUCT_STRATEGY_NEXT.md
+    -  M README.md
+    -  M RELEASE_CHECKLIST.md
+    -  M RELEASE_EXECUTION_PLAN.md
+    -  M sidepanel.html
+    -  M sidepanel.js
+
+- [manual-sync] Working snapshot
+  - Time: 2026-04-26 13:26:49 +0800
+  - Branch: main
+  - Last commit: 293ab4f feat: improve quiz mode controls and hint preferences
+  - Pending changes:
+    -  M DEVELOPMENT_LOG.md
+    -  M PRODUCT_STRATEGY_NEXT.md
+    -  M README.md
+    -  M RELEASE_CHECKLIST.md
+    -  M RELEASE_EXECUTION_PLAN.md
+    -  M sidepanel.html
+    -  M sidepanel.js
+
+- Commit: feat: add markdown file export for mistakes
+  - Time: 2026-04-26 13:27:03 +0800
+  - Stats: 7 files changed, 124 insertions(+), 17 deletions(-)
+  - Files:
+    - DEVELOPMENT_LOG.md
+    - PRODUCT_STRATEGY_NEXT.md
+    - README.md
+    - RELEASE_CHECKLIST.md
+    - RELEASE_EXECUTION_PLAN.md
+    - sidepanel.html
+    - sidepanel.js

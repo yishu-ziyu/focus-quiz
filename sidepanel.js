@@ -232,6 +232,13 @@ function renderLearningProfile(profile) {
   summary.className = 'profile-summary';
   summary.textContent = profile?.summary || '样本不足。先完成几轮测试，系统会开始判断你的理解结构。';
   profileSummary.appendChild(summary);
+
+  if (profile?.advice) {
+    const advice = document.createElement('div');
+    advice.className = 'profile-advice';
+    advice.textContent = `画像判断：${profile.advice}`;
+    profileSummary.appendChild(advice);
+  }
 }
 
 function createQuizSession(text, questions, sourceMeta, providerMeta, strategy = {}) {
@@ -609,6 +616,15 @@ async function generateQuiz(text, sourceMeta = {}) {
   startLoadingQuotes();
   await loadLearningProfile();
   const adaptivePrompt = Learning ? Learning.adaptivePrompt(currentLearningProfile) : '';
+  const articleAnalysis = SidepanelLogic?.classifyArticleForP2
+    ? SidepanelLogic.classifyArticleForP2(text)
+    : null;
+  const p2Plan = SidepanelLogic?.buildP2QuestionPlan
+    ? SidepanelLogic.buildP2QuestionPlan(currentLearningProfile, articleAnalysis)
+    : null;
+  const p2Prompt = SidepanelLogic?.buildP2PromptGuidance && p2Plan && articleAnalysis
+    ? SidepanelLogic.buildP2PromptGuidance(p2Plan, articleAnalysis)
+    : '';
 
   const prompt = `# Role
 你是我极其严苛、极度注重逻辑闭环的学术导师（The Inquisitor）。你的目标不是让我"记住"文本，而是要**粉碎**我脑中那些似是而非的认知，直到我能通过第一性原理重构知识。
@@ -682,6 +698,8 @@ async function generateQuiz(text, sourceMeta = {}) {
 
 ${adaptivePrompt}
 
+${p2Prompt}
+
 文本内容: ${text}`;
 
   try {
@@ -696,7 +714,7 @@ ${adaptivePrompt}
       showRetryError('模型返回了空题目或题目字段不完整。请重试生成，或换一个更稳定的模型。');
       return;
     }
-    const strategy = normalizeStrategy(quizData?.strategy, questions);
+    const strategy = normalizeStrategy(quizData?.strategy, questions, p2Plan);
     renderQuizStrategy(strategy, questions.length);
     currentQuizSession = createQuizSession(text, questions, sourceMeta, providerMeta, strategy);
 
@@ -1023,18 +1041,20 @@ async function regenerateQuestion(idx, intentId) {
   }
 }
 
-function normalizeStrategy(strategy, questions) {
+function normalizeStrategy(strategy, questions, p2Plan = null) {
   const focus = Array.isArray(strategy?.focus)
     ? strategy.focus.filter((type) => ['trap', 'counterfactual', 'transfer'].includes(type))
     : questions.map((question) => question.type).filter(Boolean);
   const count = questions.length;
   return {
     questionCount: count,
-    articleType: String(strategy?.articleType || 'adaptive_dose'),
+    articleType: String(strategy?.articleType || p2Plan?.articleTypeLabel || p2Plan?.articleType || 'adaptive_dose'),
     focus: Array.from(new Set(focus.length ? focus : questions.map((question) => question.type))),
     reason: String(strategy?.reason || (count === 3
       ? '冷启动或完整校准，本轮保留三题梯度。'
-      : '根据文章结构和本地画像，本轮降低题量并进行靶向检验。'))
+      : '根据文章结构和本地画像，本轮降低题量并进行靶向检验。')),
+    personalizationLine: String(strategy?.personalizationLine || p2Plan?.personalizationLine || ''),
+    localReason: String(p2Plan?.reason || '')
   };
 }
 
@@ -1057,6 +1077,13 @@ function renderQuizStrategy(strategy, actualCount) {
   body.className = 'strategy-body';
   body.textContent = strategy.reason;
   quizStrategyDiv.appendChild(body);
+
+  if (strategy.personalizationLine || strategy.localReason) {
+    const note = document.createElement('div');
+    note.className = 'strategy-note';
+    note.textContent = [strategy.personalizationLine, strategy.localReason].filter(Boolean).join(' ');
+    quizStrategyDiv.appendChild(note);
+  }
 
   if (strategy.focus.length) {
     const tags = document.createElement('div');

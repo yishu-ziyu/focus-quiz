@@ -443,3 +443,35 @@ Auto-updated by git hooks. Each commit appends an entry under the corresponding 
     - sidepanel.js
     - tests/fixtures/sidepanel-p1-harness.html
     - tests/p1_logic.test.js
+
+- [manual-sync] Working snapshot
+  - Time: 2026-04-29 17:39:41 +0800
+  - Branch: main
+  - Last commit: 10ca1b9 Make Focus Quiz questions adjustable without breaking the learning loop
+  - Pending changes:
+    -  M learning-profile.js
+    -  M sidepanel-logic.js
+    -  M sidepanel.html
+    -  M sidepanel.js
+    - ?? SHARE_20MIN_PRESENTATION_SCRIPT.md
+    - ?? tests/fixtures/sidepanel-p2-harness.html
+    - ?? tests/p2_personalization.test.js
+
+- P2 development snapshot: explainable personalization
+  - Product philosophy: personalization should reduce wasteful questions, not increase quiz volume; the user should see why this article and this profile produce this round.
+  - Added local article type signals for conceptual definition, argumentative, method, case, paper, and tutorial articles.
+  - Added a P2 question plan that intersects article demand with the user's weakest learning dimension while keeping the 1-3 question rule.
+  - Added natural-language profile advice such as "你不是记不住，而是换场景后还不能重构概念。"
+  - Added Node regression tests and a real Chrome sidepanel harness for the P2 personalized path.
+
+- Commit: Make personalization explain why Focus Quiz asks less
+  - Time: 2026-04-29 17:41:38 +0800
+  - Stats: 7 files changed, 400 insertions(+), 5 deletions(-)
+  - Files:
+    - DEVELOPMENT_LOG.md
+    - learning-profile.js
+    - sidepanel-logic.js
+    - sidepanel.html
+    - sidepanel.js
+    - tests/fixtures/sidepanel-p2-harness.html
+    - tests/p2_personalization.test.js

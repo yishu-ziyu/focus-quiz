@@ -114,7 +114,8 @@ function fqBuildProfile(events) {
     weakestLabel: weakest?.label || null,
     targetDifficulty,
     enoughData: totalAttempts >= FQ_COLD_START_ATTEMPTS,
-    summary: fqProfileSummary(overall, totalAttempts, weakest, targetDifficulty)
+    summary: fqProfileSummary(overall, totalAttempts, weakest, targetDifficulty),
+    advice: fqProfileAdvice(totalAttempts, weakest)
   };
 }
 
@@ -128,6 +129,18 @@ function fqProfileSummary(overall, totalAttempts, weakest, targetDifficulty) {
   }[targetDifficulty];
   if (!weakest) return difficultyText;
   return `当前最需要训练的是${weakest.label}。${difficultyText}`;
+}
+
+function fqProfileAdvice(totalAttempts, weakest) {
+  if (totalAttempts < FQ_COLD_START_ATTEMPTS) {
+    return '先完成冷启动，系统不会过早给你贴标签。';
+  }
+  const advice = {
+    concept_boundary: '你不是读得少，而是概念边界还没有压实。',
+    causal_reasoning: '你不是没看懂结论，而是条件一变，因果链就容易断。',
+    transfer_ability: '你不是记不住，而是换场景后还不能重构概念。'
+  };
+  return advice[weakest?.id] || '当前没有明显单一短板，继续用少量题维持理解压力。';
 }
 
 function fqAdaptivePrompt(profile) {

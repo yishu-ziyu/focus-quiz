@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Focus Quiz P2 Harness</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; width: 440px; padding: 12px; }
+    .hidden { display: none; }
+    .card, .profile-card, .strategy-card { border: 1px solid #d8d0bf; margin: 10px 0; padding: 10px; }
+    .profile-row { display: grid; grid-template-columns: 72px 1fr 34px; gap: 6px; }
+    .profile-track { height: 6px; background: #eee7d8; }
+    .profile-fill { height: 6px; background: #8c5a32; }
+    .strategy-note, .profile-advice { border-left: 2px solid #b9ad98; padding-left: 8px; }
+    .question-actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+    .regen-btn, .option, .export-btn { margin: 3px; }
+    #harnessResult { margin-top: 18px; padding: 10px; background: #edf6ef; white-space: pre-wrap; }
+  </style>
+  <script>
+    window.__lastPrompt = '';
+    window.__storageData = {
+      answerEvents: [
+        { dimension: 'transfer_ability', isCorrect: false, latencyMs: 43000 },
+        { dimension: 'transfer_ability', isCorrect: false, latencyMs: 39000 },
+        { dimension: 'transfer_ability', isCorrect: true, latencyMs: 62000 },
+        { dimension: 'concept_boundary', isCorrect: true, latencyMs: 12000 },
+        { dimension: 'concept_boundary', isCorrect: true, latencyMs: 14000 },
+        { dimension: 'causal_reasoning', isCorrect: true, latencyMs: 16000 }
+      ],
+      learningProfile: null,
+      hintVisible: true,
+      mistakeLog: []
+    };
+
+    window.chrome = {
+      storage: {
+        local: {
+          async get(keys) {
+            if (Array.isArray(keys)) {
+              return Object.fromEntries(keys.map((key) => [key, window.__storageData[key]]));
+            }
+            if (typeof keys === 'string') return { [keys]: window.__storageData[keys] };
+            return { ...window.__storageData };
+          },
+          async set(values) {
+            Object.assign(window.__storageData, values);
+          },
+          remove(keys) {
+            (Array.isArray(keys) ? keys : [keys]).forEach((key) => delete window.__storageData[key]);
+          }
+        },
+        onChanged: { addListener() {} }
+      },
+      runtime: {
+        openOptionsPage() {},
+        async sendMessage() { return { ok: true }; }
+      }
+    };
+
+    window.callLLM = async (prompt) => {
+      window.__lastPrompt = prompt;
+      return JSON.stringify({
+        strategy: {
+          questionCount: 1,
+          articleType: '教程型',
+          focus: ['transfer'],
+          personalizationLine: '你不是记不住，而是换场景后还不能重构概念。',
+          reason: '文章是教程型，且用户薄弱维度是迁移应用，所以只出一道场景迁移题。'
+        },
+        questions: [{
+          type: 'transfer',
+          answerMode: 'multiple_choice',
+          question: '把这套复盘步骤迁移到准备分享会时，最先应该做什么？',
+          options: ['先找一个真实演示链路', '先增加更多题目', '先隐藏 Evidence', '先删除学习画像'],
+          correct: 0,
+          explanation: '迁移的关键是保留方法的使用条件，而不是扩大题量。',
+          sourceHint: '回忆教程如何要求从步骤迁移到具体项目。',
+          evidenceQuote: '第一步建立框架，第二步迁移到具体项目',
+          evidenceLocator: '教程步骤段落'
+        }]
+      });
+    };
+  </script>
+</head>
+<body>
+  <div id="mainView">
+    <button id="openMistakes">错题本</button>
+    <button id="openSettings">设置</button>
+    <div id="streakBadge"></div>
+    <button id="selectionModeBtn"></button>
+    <button id="fullPageModeBtn"></button>
+    <div id="modeHelp" class="hidden"></div>
+    <div id="profileSummary" class="profile-card"></div>
+    <div id="selectedText" class="hidden"></div>
+    <div id="quizStrategy" class="strategy-card hidden"></div>
+    <div id="loading" class="hidden"><span id="loadingQuote"></span></div>
+    <div id="error" class="hidden"></div>
+    <div id="quiz"></div>
+    <div id="diagnosis" class="hidden"></div>
+  </div>
+  <div id="mistakeView" class="hidden">
+    <button id="copyMistakes" class="export-btn">复制 Markdown</button>
+    <button id="copyAnkiCsv" class="export-btn">复制 Anki CSV</button>
+    <button id="exportMistakes" class="export-btn">保存 .md</button>
+    <button id="backToQuiz">返回</button>
+    <div id="exportStatus"></div>
+    <div id="mistakeList"></div>
+  </div>
+  <pre id="harnessResult"></pre>
+
+  <script src="../../learning-profile.js"></script>
+  <script src="../../sidepanel-logic.js"></script>
+  <script src="../../sidepanel.js"></script>
+  <script>
+    (async () => {
+      await generateQuiz(
+        '这是一个方法型教程：第一步建立框架，第二步迁移到具体项目，最后复盘适用边界。',
+        { mode: 'selection', url: 'https://example.com/p2', title: 'P2 Demo' }
+      );
+      document.body.dataset.harnessDone = 'true';
+      document.getElementById('harnessResult').textContent = [
+        `done=${document.body.dataset.harnessDone}`,
+        `promptHasP2=${window.__lastPrompt.includes('# P2 Personalization')}`,
+        `promptHasArticleType=${window.__lastPrompt.includes('方法型')}`,
+        `singleQuestion=${document.querySelectorAll('.question').length === 1}`,
+        `profileAdvice=${document.body.textContent.includes('换场景后还不能重构概念')}`,
+        `strategyNote=${document.body.textContent.includes('只出一道场景迁移题')}`
+      ].join('\n');
+    })().catch((err) => {
+      document.body.dataset.harnessDone = 'error';
+      document.getElementById('harnessResult').textContent = err.stack || String(err);
+    });
+  </script>
+</body>
+</html>

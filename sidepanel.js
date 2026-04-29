@@ -16,12 +16,14 @@ const mainView = document.getElementById('mainView');
 const mistakeView = document.getElementById('mistakeView');
 const mistakeList = document.getElementById('mistakeList');
 const copyMistakesBtn = document.getElementById('copyMistakes');
+const copyAnkiCsvBtn = document.getElementById('copyAnkiCsv');
 const exportMistakesBtn = document.getElementById('exportMistakes');
 const exportStatus = document.getElementById('exportStatus');
 const profileSummary = document.getElementById('profileSummary');
 const diagnosisDiv = document.getElementById('diagnosis');
 const quizStrategyDiv = document.getElementById('quizStrategy');
 const Learning = globalThis.FocusQuizLearning;
+const SidepanelLogic = globalThis.FocusQuizSidepanelLogic;
 
 let currentLearningProfile = null;
 let currentQuizSession = null;
@@ -150,7 +152,7 @@ async function updateStreak() {
 // ========================
 // 错题本系统 (Behavioral Design: Loss Aversion + Growth Loop)
 // ========================
-async function saveMistake(question, userChoiceIdx, correctIdx, explanation, options, evidenceQuote = '', sourceHint = '') {
+async function saveMistake(question, userChoiceIdx, correctIdx, explanation, options, evidenceQuote = '', sourceHint = '', evidenceLocator = '') {
   const result = await chrome.storage.local.get(['mistakeLog']);
   const log = result.mistakeLog || [];
   log.unshift({
@@ -160,6 +162,7 @@ async function saveMistake(question, userChoiceIdx, correctIdx, explanation, opt
     explanation: explanation,
     evidenceQuote,
     sourceHint,
+    evidenceLocator,
     timestamp: Date.now(),
     sourceUrl: currentQuizSession?.source?.url || '',
     sourceTitle: currentQuizSession?.source?.title || ''
@@ -248,7 +251,9 @@ function createQuizSession(text, questions, sourceMeta, providerMeta, strategy =
     questions: questions.map((q, idx) => ({
       index: idx,
       type: q.type,
-      startedAt: Date.now()
+      answerMode: q.answerMode || 'multiple_choice',
+      startedAt: Date.now(),
+      completed: false
     }))
   };
 }
@@ -256,9 +261,25 @@ function createQuizSession(text, questions, sourceMeta, providerMeta, strategy =
 function renderSessionDiagnosis() {
   if (!diagnosisDiv || !Learning || !currentQuizSession) return;
   const totalQuestions = currentQuizSession.questions.length;
-  if (currentQuizSession.answers.length < totalQuestions) return;
+  const completedQuestions = currentQuizSession.questions.filter((question) => question.completed).length;
+  if (completedQuestions < totalQuestions) return;
 
-  const diagnosis = Learning.diagnoseSession(currentQuizSession.answers, currentLearningProfile, currentQuizSession.strategy);
+  const scoredAnswers = currentQuizSession.answers.filter((answer) => answer.isScored !== false);
+  if (scoredAnswers.length === 0) {
+    diagnosisDiv.replaceChildren();
+    const title = document.createElement('div');
+    title.className = 'diagnosis-title';
+    title.textContent = '本轮诊断：开放自检完成';
+    diagnosisDiv.appendChild(title);
+    const body = document.createElement('div');
+    body.className = 'diagnosis-body';
+    body.textContent = '这轮只做开放题自检，不计入正确率画像。请对照参考答案和 Evidence 回到原文校正。';
+    diagnosisDiv.appendChild(body);
+    diagnosisDiv.classList.remove('hidden');
+    return;
+  }
+
+  const diagnosis = Learning.diagnoseSession(scoredAnswers, currentLearningProfile, currentQuizSession.strategy);
   diagnosisDiv.replaceChildren();
 
   const title = document.createElement('div');
@@ -294,6 +315,7 @@ async function renderMistakeLog() {
   mistakeList.replaceChildren();
   if (exportStatus) exportStatus.textContent = '';
   if (copyMistakesBtn) copyMistakesBtn.disabled = log.length === 0;
+  if (copyAnkiCsvBtn) copyAnkiCsvBtn.disabled = log.length === 0;
   if (exportMistakesBtn) exportMistakesBtn.disabled = log.length === 0;
 
   if (log.length === 0) {
@@ -344,7 +366,8 @@ async function renderMistakeLog() {
     if (evidenceText) {
       const evidence = document.createElement('div');
       evidence.className = 'mistake-evidence';
-      evidence.textContent = `证据片段: ${evidenceText}`;
+      const locator = item.evidenceLocator ? `（${item.evidenceLocator}）` : '';
+      evidence.textContent = `证据片段${locator}: ${evidenceText}`;
       div.appendChild(evidence);
     }
 
@@ -380,7 +403,9 @@ function shareQuestion(questionText, explanation) {
 }
 
 function cleanMarkdown(value) {
-  return String(value || '').replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim();
+  return SidepanelLogic?.cleanText
+    ? SidepanelLogic.cleanText(value)
+    : String(value || '').replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 function formatMistakesAsMarkdown(log) {
@@ -396,6 +421,7 @@ function formatMistakesAsMarkdown(log) {
     const sourceTitle = cleanMarkdown(item.sourceTitle || '原文');
     const sourceUrl = cleanMarkdown(item.sourceUrl);
     const evidence = cleanMarkdown(item.evidenceQuote || item.sourceHint);
+    const locator = cleanMarkdown(item.evidenceLocator);
 
     lines.push(`## ${idx + 1}. ${cleanMarkdown(item.question)}`);
     lines.push('');
@@ -406,12 +432,19 @@ function formatMistakesAsMarkdown(log) {
     lines.push(`- 思维断裂点：${cleanMarkdown(item.explanation)}`);
     if (evidence) {
       lines.push('');
-      lines.push('> 证据片段：' + evidence);
+      lines.push('> 证据片段' + (locator ? `（${locator}）` : '') + '：' + evidence);
     }
     lines.push('');
   });
 
   return lines.join('\n');
+}
+
+function formatMistakesAsAnkiCsv(log) {
+  if (SidepanelLogic?.formatMistakesAsAnkiCsv) {
+    return SidepanelLogic.formatMistakesAsAnkiCsv(log);
+  }
+  return 'Front,Back,Source,Evidence,Tags';
 }
 
 function formatExportFileStamp(date = new Date()) {
@@ -452,6 +485,22 @@ async function copyMistakesAsMarkdown() {
   try {
     await navigator.clipboard.writeText(exportData.markdown);
     if (exportStatus) exportStatus.textContent = `已复制 ${exportData.count} 条错题为 Markdown。`;
+  } catch (err) {
+    if (exportStatus) exportStatus.textContent = `复制失败：${getErrorMessage(err)}`;
+  }
+}
+
+async function copyMistakesAsAnkiCsv() {
+  const result = await chrome.storage.local.get(['mistakeLog']);
+  const log = Array.isArray(result.mistakeLog) ? result.mistakeLog : [];
+  if (!log.length) {
+    if (exportStatus) exportStatus.textContent = '暂无错题可导出。';
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(formatMistakesAsAnkiCsv(log));
+    if (exportStatus) exportStatus.textContent = `已复制 ${log.length} 条错题为 Anki CSV。`;
   } catch (err) {
     if (exportStatus) exportStatus.textContent = `复制失败：${getErrorMessage(err)}`;
   }
@@ -579,30 +628,36 @@ async function generateQuiz(text, sourceMeta = {}) {
   "questions": [
     {
       "type": "trap",
+      "answerMode": "multiple_choice",
       "question": "Q1 [概念陷阱题]: 题目内容",
       "options": ["选项A", "选项B", "选项C", "选项D"],
       "correct": 0,
       "explanation": "指出错误选项的思维陷阱：是因果倒置？偷换概念？还是忽略了前提？",
       "sourceHint": "作答前可显示的弱提示，不能泄露答案，只提示需要回忆哪类关系",
-      "evidenceQuote": "作答后才显示的原文证据短句"
+      "evidenceQuote": "作答后才显示的原文证据短句",
+      "evidenceLocator": "证据在原文中的粗略位置，例如第几段或小标题"
     },
     {
       "type": "counterfactual",
+      "answerMode": "multiple_choice",
       "question": "Q2 [反事实推演]: 如果文中条件A变为非A，结论B会如何变化？",
       "options": ["变化描述A", "变化描述B", "变化描述C", "变化描述D"],
       "correct": 0,
       "explanation": "揭示变量之间的动态关系，而非静态事实",
       "sourceHint": "作答前可显示的弱提示，不能泄露答案，只提示需要回忆哪类关系",
-      "evidenceQuote": "作答后才显示的原文证据短句"
+      "evidenceQuote": "作答后才显示的原文证据短句",
+      "evidenceLocator": "证据在原文中的粗略位置，例如第几段或小标题"
     },
     {
       "type": "transfer",
+      "answerMode": "multiple_choice",
       "question": "Q3 [场景迁移]: 在[完全不同的场景X]中，文中逻辑如何应用？",
       "options": ["做法A", "做法B", "做法C", "做法D"],
       "correct": 0,
       "explanation": "考察去语境化的迁移能力，指出深层逻辑",
       "sourceHint": "作答前可显示的弱提示，不能泄露答案，只提示需要回忆哪类关系",
-      "evidenceQuote": "作答后才显示的原文证据短句"
+      "evidenceQuote": "作答后才显示的原文证据短句",
+      "evidenceLocator": "证据在原文中的粗略位置，例如第几段或小标题"
     }
   ]
 }
@@ -610,6 +665,7 @@ async function generateQuiz(text, sourceMeta = {}) {
 # Question Design Rules
 - questions.length 必须等于 strategy.questionCount，数量只能是 1、2、3。
 - 允许的 type 只有 trap、counterfactual、transfer。
+- 默认 answerMode 必须是 multiple_choice；只有用户点击“换成开放题”时才生成 open。
 - trap 概念陷阱题：选项必须包含"合理的错误归因"或"常见的望文生义"。正确选项不能是原文简单改写，必须是原文逻辑的**推论**。干扰项要极具迷惑性。
 - counterfactual 反事实推演：考察变量之间的**动态关系**，不是静态事实。
 - transfer 场景迁移：将逻辑迁移到完全不同的领域，考察深层理解。
@@ -617,7 +673,8 @@ async function generateQuiz(text, sourceMeta = {}) {
 - 已有用户画像时，先判断文章最需要检验的能力；如果文章强烈命中用户薄弱维度，可以只生成 1 道靶向题。
 - 每道题必须同时返回 sourceHint 和 evidenceQuote。
 - sourceHint 会在作答前展示，必须是弱提示，不能包含正确答案、关键选项词、可直接定位答案的原文短句；只提示用户应该回忆哪类关系、概念边界或推理方向。
-- evidenceQuote 会在作答后才展示，应该短而具体，避免大段复制原文，用来说明题目依据来自哪里。
+- evidenceQuote 会在作答后才展示，应该短而具体，尽量原样引用原文中的关键短句，避免大段复制原文。
+- evidenceLocator 是证据的粗略定位，例如“第 3 段”“方法部分”“小标题 X 下第一段”；不要编造精确页码。
 
 # Explanation Rules
 - 如果选错，必须指出思维模型在哪里断裂（因果倒置？偷换概念？忽略前提？）
@@ -718,54 +775,110 @@ function renderQuiz(data) {
     return [];
   }
 
+  questions.forEach((q, idx) => {
+    quizDiv.appendChild(renderQuestionCard(q, idx));
+  });
+
+  return questions;
+}
+
+function renderQuestionCard(q, idx) {
   const typeLabels = {
     'trap': '概念陷阱',
     'counterfactual': '反事实推演',
     'transfer': '场景迁移'
   };
 
-  questions.forEach((q, idx) => {
-    const div = document.createElement('div');
-    div.className = 'card question';
-    div.style.animationDelay = `${idx * 0.1}s`;
-    div.dataset.index = String(idx);
-    div.dataset.type = q.type;
-    div.dataset.startedAt = String(Date.now());
-    div.dataset.evidenceQuote = q.evidenceQuote || '';
-    div.dataset.sourceHint = q.sourceHint || '';
+  const div = document.createElement('div');
+  div.className = 'card question';
+  div.style.animationDelay = `${idx * 0.1}s`;
+  div.dataset.index = String(idx);
+  div.dataset.type = q.type;
+  div.dataset.answerMode = q.answerMode || 'multiple_choice';
+  div.dataset.startedAt = String(Date.now());
+  div.dataset.evidenceQuote = q.evidenceQuote || '';
+  div.dataset.evidenceLocator = q.evidenceLocator || '';
+  div.dataset.sourceHint = q.sourceHint || '';
 
-    if (q.type) {
-      const typeTag = document.createElement('span');
-      typeTag.className = `q-type ${q.type}`;
-      typeTag.textContent = typeLabels[q.type] || q.type;
-      div.appendChild(typeTag);
-    }
+  if (q.type) {
+    const typeTag = document.createElement('span');
+    typeTag.className = `q-type ${q.type}`;
+    typeTag.textContent = q.answerMode === 'open'
+      ? `${typeLabels[q.type] || q.type} · 开放题`
+      : (typeLabels[q.type] || q.type);
+    div.appendChild(typeTag);
+  }
 
-    const title = document.createElement('div');
-    title.className = 'q-text';
-    title.textContent = q.question;
-    div.appendChild(title);
+  const title = document.createElement('div');
+  title.className = 'q-text';
+  title.textContent = q.question;
+  div.appendChild(title);
 
-    if (q.sourceHint) {
-      div.appendChild(renderHint(q.sourceHint));
-    }
+  div.appendChild(renderQuestionActions(idx));
 
-    const optionsDiv = document.createElement('div');
+  if (q.sourceHint) {
+    div.appendChild(renderHint(q.sourceHint));
+  }
 
-    q.options.forEach((opt, i) => {
-      const btn = document.createElement('button');
-      btn.className = 'option';
-      btn.textContent = opt;
-      // 使用 addEventListener 代替 onclick 以符合 CSP 规范
-      btn.addEventListener('click', () => handleAnswer(btn, i, q.correct, q.explanation, optionsDiv, q.question, q.options, q.evidenceQuote, q.sourceHint));
-      optionsDiv.appendChild(btn);
-    });
+  if (q.answerMode === 'open') {
+    div.appendChild(renderOpenAnswer(q, idx));
+    return div;
+  }
 
-    div.appendChild(optionsDiv);
-    quizDiv.appendChild(div);
+  const optionsDiv = document.createElement('div');
+  q.options.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'option';
+    btn.textContent = opt;
+    btn.addEventListener('click', () => handleAnswer(
+      btn,
+      i,
+      q.correct,
+      q.explanation,
+      optionsDiv,
+      q.question,
+      q.options,
+      q.evidenceQuote,
+      q.sourceHint,
+      q.evidenceLocator
+    ));
+    optionsDiv.appendChild(btn);
   });
 
-  return questions;
+  div.appendChild(optionsDiv);
+  return div;
+}
+
+function renderQuestionActions(idx) {
+  const actions = document.createElement('div');
+  actions.className = 'question-actions';
+  const intents = SidepanelLogic?.regenerationIntents || {};
+  ['swap', 'easier', 'transfer', 'open'].forEach((intentId) => {
+    const intent = intents[intentId] || { label: intentId };
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'regen-btn';
+    btn.textContent = intent.label;
+    btn.addEventListener('click', () => regenerateQuestion(idx, intentId));
+    actions.appendChild(btn);
+  });
+  return actions;
+}
+
+function renderOpenAnswer(q, idx) {
+  const wrapper = document.createElement('div');
+  const textarea = document.createElement('textarea');
+  textarea.className = 'open-answer';
+  textarea.placeholder = '先用自己的话回答，再对照参考答案。';
+  wrapper.appendChild(textarea);
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'open-submit';
+  btn.textContent = '提交并看参考答案';
+  btn.addEventListener('click', () => handleOpenAnswer(btn, textarea, q, idx));
+  wrapper.appendChild(btn);
+  return wrapper;
 }
 
 function renderHint(sourceHint) {
@@ -789,7 +902,7 @@ function renderHint(sourceHint) {
   return hint;
 }
 
-function renderEvidence(evidenceQuote, sourceHint) {
+function renderEvidenceBlock(evidenceQuote, sourceHint, evidenceLocator = '') {
   const text = evidenceQuote || sourceHint;
   if (!text) return document.createDocumentFragment();
   const evidence = document.createElement('div');
@@ -798,8 +911,116 @@ function renderEvidence(evidenceQuote, sourceHint) {
   label.className = 'evidence-label';
   label.textContent = evidenceQuote ? 'Evidence' : 'Source Hint';
   evidence.appendChild(label);
-  evidence.append(text);
+  evidence.append(evidenceLocator ? `${evidenceLocator}: ${text}` : text);
   return evidence;
+}
+
+function buildRegenerationPrompt(text, currentQuestion, intent) {
+  const typeRule = intent.targetType
+    ? `- 这次必须生成 ${intent.targetType} 类型。`
+    : `- 优先避开当前题目的问法，但可以保持 ${currentQuestion?.type || 'trap'} 类型。`;
+  const difficultyRule = intent.difficulty === 'easier'
+    ? '- 降低难度：缩小抽象跨度，只改变一个关键前提，干扰项仍要有迷惑性。'
+    : '- 保持必要难度：不要简单复述原文，继续检查真实理解断点。';
+  const modeRule = intent.answerMode === 'open'
+    ? [
+        '- 生成开放题，answerMode 必须是 open。',
+        '- 不要返回 options/correct；必须返回 expectedAnswer 和 rubric。',
+        '- 开放题要让用户用自己的话重构逻辑，而不是背诵原文。'
+      ].join('\n')
+    : [
+        '- 生成选择题，answerMode 必须是 multiple_choice。',
+        '- 必须返回 4 个 options 和 correct，correct 是 0-3 的整数。'
+      ].join('\n');
+
+  return `# Role
+你是 Focus Quiz 的严苛学术导师。用户正在对单题进行局部重生成，不要改变整轮学习闭环。
+
+# Regeneration Intent
+- 控制项：${intent.label}
+${typeRule}
+${difficultyRule}
+${modeRule}
+
+# Current Question To Replace
+${JSON.stringify(currentQuestion || {}, null, 2)}
+
+# Output Format
+严格只返回 JSON：
+{
+  "question": {
+    "type": "trap | counterfactual | transfer",
+    "answerMode": "${intent.answerMode}",
+    "question": "新题目",
+    "options": ["A", "B", "C", "D"],
+    "correct": 0,
+    "expectedAnswer": "开放题参考答案，选择题可留空",
+    "rubric": "开放题评分要点，选择题可留空",
+    "explanation": "指出这道题暴露的理解断点",
+    "sourceHint": "作答前弱提示，不能剧透答案",
+    "evidenceQuote": "作答后显示的原文关键短句",
+    "evidenceLocator": "证据粗略位置，例如第几段或小标题"
+  }
+}
+
+# Evidence Rules
+- sourceHint 不能包含正确答案、关键选项词、可直接定位答案的原文短句。
+- evidenceQuote 必须短而具体，尽量原样引用原文中的关键短句。
+- evidenceLocator 只能给粗略位置，不要编造页码或不存在的小标题。
+
+文本内容：${text}`;
+}
+
+async function regenerateQuestion(idx, intentId) {
+  if (!currentQuizSession || !lastQuizRequest?.text) {
+    showRetryError('当前没有可重生成的题目。请先生成一轮问题。');
+    return;
+  }
+
+  const card = quizDiv.querySelector(`.question[data-index="${idx}"]`);
+  if (!card || card.classList.contains('answered')) return;
+
+  const intent = SidepanelLogic?.normalizeRegenerationIntent
+    ? SidepanelLogic.normalizeRegenerationIntent(intentId)
+    : { id: intentId, label: intentId, answerMode: 'multiple_choice', targetType: null, difficulty: 'same' };
+  const controls = card.querySelectorAll('button');
+  controls.forEach((button) => { button.disabled = true; });
+  showModeHelp(`正在${intent.label}，会保留当前文章和本轮策略。`);
+
+  try {
+    const currentQuestion = {
+      type: card.dataset.type,
+      answerMode: card.dataset.answerMode,
+      question: card.querySelector('.q-text')?.textContent || '',
+      sourceHint: card.dataset.sourceHint || '',
+      evidenceQuote: card.dataset.evidenceQuote || '',
+      evidenceLocator: card.dataset.evidenceLocator || ''
+    };
+    const prompt = buildRegenerationPrompt(lastQuizRequest.text, currentQuestion, intent);
+    const content = await callLLM(prompt);
+    const data = parseQuizJSON(content);
+    const rawQuestion = data?.question || data?.questions?.[0];
+    const normalized = normalizeQuestions({ questions: [rawQuestion] })[0];
+    if (!normalized) {
+      showRetryError('模型没有返回可用的新题。请再次重试，或换一个更稳定的模型。');
+      return;
+    }
+    if (intent.targetType) normalized.type = intent.targetType;
+
+    const replacement = renderQuestionCard(normalized, idx);
+    card.replaceWith(replacement);
+    currentQuizSession.questions[idx] = {
+      index: idx,
+      type: normalized.type,
+      answerMode: normalized.answerMode,
+      startedAt: Date.now(),
+      completed: false,
+      regeneratedBy: intent.id
+    };
+  } catch (err) {
+    showRetryError(toFriendlyGenerationError(getErrorMessage(err)));
+    controls.forEach((button) => { button.disabled = false; });
+  }
 }
 
 function normalizeStrategy(strategy, questions) {
@@ -854,32 +1075,27 @@ function renderQuizStrategy(strategy, actualCount) {
 
 function normalizeQuestions(data) {
   const rawQuestions = Array.isArray(data?.questions) ? data.questions : [];
-  const allowedTypes = ['trap', 'counterfactual', 'transfer'];
   return rawQuestions.slice(0, 3).map((q, idx) => {
-    const options = Array.isArray(q?.options) ? q.options.map((opt) => String(opt)) : [];
-    const rawCorrect = Number.isInteger(q?.correct) ? q.correct : q?.correctAnswer;
-    const correct = Number.isInteger(rawCorrect) ? rawCorrect : Number.parseInt(rawCorrect, 10);
-    const type = allowedTypes.includes(q?.type) ? q.type : (allowedTypes[idx] || 'trap');
-    return {
-      type,
-      question: String(q?.question || `Q${idx + 1}`),
-      options,
-      correct,
-      explanation: String(q?.explanation || '模型未返回解析。'),
-      evidenceQuote: String(q?.evidenceQuote || '').trim(),
-      sourceHint: String(q?.sourceHint || '').trim()
-    };
-  }).filter((q) => q.options.length >= 2 && Number.isInteger(q.correct) && q.correct >= 0 && q.correct < q.options.length);
+    if (SidepanelLogic?.normalizeP1Question) return SidepanelLogic.normalizeP1Question(q, idx);
+    return q;
+  }).filter((q) => {
+    if (!q || !q.question) return false;
+    if (q.answerMode === 'open') return Boolean(q.expectedAnswer || q.rubric || q.explanation);
+    return q.options.length >= 2 && Number.isInteger(q.correct) && q.correct >= 0 && q.correct < q.options.length;
+  });
 }
 
 // ========================
 // 处理答案
 // ========================
-async function handleAnswer(btn, chosenIdx, correctIdx, explanation, container, questionText, options, evidenceQuote = '', sourceHint = '') {
+async function handleAnswer(btn, chosenIdx, correctIdx, explanation, container, questionText, options, evidenceQuote = '', sourceHint = '', evidenceLocator = '') {
   const isCorrect = chosenIdx === correctIdx;
   const questionCard = container.closest('.question');
   const questionType = questionCard?.dataset.type || '';
+  const questionIndex = Number.parseInt(questionCard?.dataset.index || '-1', 10);
   const questionStartedAt = Number.parseInt(questionCard?.dataset.startedAt || String(Date.now()), 10);
+  questionCard?.classList.add('answered');
+  questionCard?.querySelectorAll('.regen-btn').forEach((regenBtn) => { regenBtn.disabled = true; });
 
   // 禁用所有按钮
   const buttons = container.querySelectorAll('.option');
@@ -894,7 +1110,7 @@ async function handleAnswer(btn, chosenIdx, correctIdx, explanation, container, 
   if (!isCorrect) {
     btn.classList.add('wrong');
     // 错题沉淀到本地
-    await saveMistake(questionText, chosenIdx, correctIdx, explanation, options, evidenceQuote, sourceHint);
+    await saveMistake(questionText, chosenIdx, correctIdx, explanation, options, evidenceQuote, sourceHint, evidenceLocator);
   }
 
   const latencyMs = Date.now() - questionStartedAt;
@@ -907,9 +1123,13 @@ async function handleAnswer(btn, chosenIdx, correctIdx, explanation, container, 
     isCorrect,
     evidenceQuote,
     sourceHint,
+    evidenceLocator,
     latencyMs
   };
   if (currentQuizSession) {
+    if (currentQuizSession.questions[questionIndex]) {
+      currentQuizSession.questions[questionIndex].completed = true;
+    }
     currentQuizSession.answers.push(answerRecord);
   }
   if (Learning && currentQuizSession) {
@@ -935,7 +1155,7 @@ async function handleAnswer(btn, chosenIdx, correctIdx, explanation, container, 
     expDiv.append(explanation);
   }
   if (evidenceQuote || sourceHint) {
-    expDiv.appendChild(renderEvidence(evidenceQuote, sourceHint));
+    expDiv.appendChild(renderEvidenceBlock(evidenceQuote, sourceHint, evidenceLocator));
   }
 
   // Growth Loop: 答错后追加分享按钮
@@ -951,6 +1171,61 @@ async function handleAnswer(btn, chosenIdx, correctIdx, explanation, container, 
   }
 
   container.parentElement.appendChild(expDiv);
+  renderSessionDiagnosis();
+}
+
+function handleOpenAnswer(btn, textarea, q, idx) {
+  const questionCard = btn.closest('.question');
+  questionCard?.classList.add('answered');
+  questionCard?.querySelectorAll('.regen-btn').forEach((regenBtn) => { regenBtn.disabled = true; });
+  textarea.disabled = true;
+  btn.disabled = true;
+
+  const answerRecord = {
+    type: q.type,
+    dimension: Learning?.dimensions?.[q.type]?.id || q.type,
+    questionText: q.question,
+    userAnswer: textarea.value.trim(),
+    expectedAnswer: q.expectedAnswer,
+    isCorrect: null,
+    isScored: false,
+    evidenceQuote: q.evidenceQuote,
+    sourceHint: q.sourceHint,
+    evidenceLocator: q.evidenceLocator,
+    latencyMs: Date.now() - Number.parseInt(questionCard?.dataset.startedAt || String(Date.now()), 10)
+  };
+
+  if (currentQuizSession) {
+    if (currentQuizSession.questions[idx]) {
+      currentQuizSession.questions[idx].completed = true;
+    }
+    currentQuizSession.answers.push(answerRecord);
+  }
+
+  const expDiv = document.createElement('div');
+  expDiv.className = 'explain correct-exp';
+  if (q.expectedAnswer) {
+    const answerLabel = document.createElement('strong');
+    answerLabel.textContent = '参考答案：';
+    expDiv.appendChild(answerLabel);
+    expDiv.append(q.expectedAnswer);
+  }
+  if (q.rubric) {
+    expDiv.appendChild(document.createElement('br'));
+    const rubricLabel = document.createElement('strong');
+    rubricLabel.textContent = '检查要点：';
+    expDiv.appendChild(rubricLabel);
+    expDiv.append(q.rubric);
+  }
+  if (q.explanation) {
+    expDiv.appendChild(document.createElement('br'));
+    expDiv.append(q.explanation);
+  }
+  if (q.evidenceQuote || q.sourceHint) {
+    expDiv.appendChild(renderEvidenceBlock(q.evidenceQuote, q.sourceHint, q.evidenceLocator));
+  }
+
+  questionCard.appendChild(expDiv);
   renderSessionDiagnosis();
 }
 
@@ -1010,6 +1285,10 @@ fullPageModeBtn?.addEventListener('click', () => {
 
 copyMistakesBtn?.addEventListener('click', () => {
   copyMistakesAsMarkdown();
+});
+
+copyAnkiCsvBtn?.addEventListener('click', () => {
+  copyMistakesAsAnkiCsv();
 });
 
 exportMistakesBtn?.addEventListener('click', () => {

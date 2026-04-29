@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Focus Quiz P1 Harness</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; width: 420px; padding: 12px; }
+    .hidden { display: none; }
+    .card { border: 1px solid #d8d0bf; margin: 10px 0; padding: 10px; }
+    .question-actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+    .regen-btn, .export-btn, .open-submit, .option { margin: 3px; }
+    .open-answer { width: 100%; min-height: 80px; }
+    .evidence, .mistake-evidence { border-left: 3px solid #b9ad98; padding-left: 8px; }
+    #harnessResult { margin-top: 18px; padding: 10px; background: #edf6ef; white-space: pre-wrap; }
+  </style>
+  <script>
+    window.__storageData = {
+      answerEvents: [],
+      learningProfile: null,
+      hintVisible: true,
+      mistakeLog: [{
+        question: '为什么熟悉感不等于理解？',
+        userChoice: '因为文章太长',
+        correctAnswer: '因为没有完成主动检索',
+        explanation: '把输入流畅度误当成可检索理解。',
+        evidenceQuote: '熟悉感很容易被误认为理解',
+        evidenceLocator: '动机部分第 2 段',
+        sourceTitle: 'Demo Article',
+        sourceUrl: 'https://example.com/demo',
+        timestamp: Date.now()
+      }]
+    };
+
+    window.chrome = {
+      storage: {
+        local: {
+          async get(keys) {
+            if (Array.isArray(keys)) {
+              return Object.fromEntries(keys.map((key) => [key, window.__storageData[key]]));
+            }
+            if (typeof keys === 'string') return { [keys]: window.__storageData[keys] };
+            return { ...window.__storageData };
+          },
+          async set(values) {
+            Object.assign(window.__storageData, values);
+          },
+          remove(keys) {
+            (Array.isArray(keys) ? keys : [keys]).forEach((key) => delete window.__storageData[key]);
+          }
+        },
+        onChanged: { addListener() {} }
+      },
+      runtime: {
+        openOptionsPage() {},
+        async sendMessage() {
+          return { ok: true };
+        }
+      }
+    };
+
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+      async writeText(text) {
+        window.__lastClipboardText = text;
+      }
+      }
+    });
+
+    window.callLLM = async (prompt) => {
+      const isRegeneration = prompt.includes('# Regeneration Intent');
+      const isOpen = prompt.includes('answerMode 必须是 open');
+      if (isRegeneration && isOpen) {
+        return JSON.stringify({
+          question: {
+            type: 'transfer',
+            answerMode: 'open',
+            question: '把文章中的主动检索逻辑迁移到读论文场景，应该怎么做？',
+            expectedAnswer: '读完一节后先闭卷重构论证链，再回到原文校正断点。',
+            rubric: '需要包含闭卷回忆、论证链、回原文校正三点。',
+            explanation: '开放题检查的是能否主动重构逻辑。',
+            sourceHint: '回忆文章如何区分看过和理解。',
+            evidenceQuote: '不要马上总结，而是先被问一下',
+            evidenceLocator: '产品洞察段落'
+          }
+        });
+      }
+      return JSON.stringify({
+        strategy: {
+          questionCount: 1,
+          articleType: 'conceptual_argument',
+          focus: ['trap'],
+          reason: '测试夹具只生成一道题，验证 P1 控件。'
+        },
+        questions: [{
+          type: 'trap',
+          answerMode: 'multiple_choice',
+          question: 'Focus Quiz 为什么不优先做摘要？',
+          options: ['摘要会继续强化输入感', '摘要无法保存链接', '摘要不能调用模型', '摘要只能用于论文'],
+          correct: 0,
+          explanation: '核心断点是把顺滑输入误认为理解检验。',
+          sourceHint: '回忆产品洞察里对总结的批评。',
+          evidenceQuote: '总结会继续强化输入感',
+          evidenceLocator: '产品洞察第 1 段'
+        }]
+      });
+    };
+  </script>
+</head>
+<body>
+  <div id="mainView">
+    <button id="openMistakes">错题本</button>
+    <button id="openSettings">设置</button>
+    <div id="streakBadge"></div>
+    <button id="selectionModeBtn"></button>
+    <button id="fullPageModeBtn"></button>
+    <div id="modeHelp" class="hidden"></div>
+    <div id="profileSummary"></div>
+    <div id="selectedText" class="hidden"></div>
+    <div id="quizStrategy" class="card hidden"></div>
+    <div id="loading" class="hidden"><span id="loadingQuote"></span></div>
+    <div id="error" class="hidden"></div>
+    <div id="quiz"></div>
+    <div id="diagnosis" class="card hidden"></div>
+  </div>
+  <div id="mistakeView" class="hidden">
+    <button id="copyMistakes" class="export-btn">复制 Markdown</button>
+    <button id="copyAnkiCsv" class="export-btn">复制 Anki CSV</button>
+    <button id="exportMistakes" class="export-btn">保存 .md</button>
+    <button id="backToQuiz">返回</button>
+    <div id="exportStatus"></div>
+    <div id="mistakeList"></div>
+  </div>
+  <pre id="harnessResult">pending</pre>
+
+  <script src="../../learning-profile.js"></script>
+  <script src="../../sidepanel-logic.js"></script>
+  <script src="../../sidepanel.js"></script>
+  <script>
+    (async () => {
+      await generateQuiz(
+        '熟悉感很容易被误认为理解。不要马上总结，而是先被问一下。总结会继续强化输入感。',
+        { mode: 'selection', url: 'https://example.com/demo', title: 'Demo Article' }
+      );
+      await regenerateQuestion(0, 'open');
+      document.querySelector('.open-answer').value = '先闭卷复述，再回原文校正。';
+      document.querySelector('.open-submit').click();
+      document.getElementById('openMistakes').click();
+      await copyMistakesAsAnkiCsv();
+      document.body.dataset.harnessDone = 'true';
+      document.getElementById('harnessResult').textContent = [
+        `done=${document.body.dataset.harnessDone}`,
+        `openQuestion=${Boolean(document.querySelector('.open-answer'))}`,
+        `evidence=${document.body.textContent.includes('产品洞察段落')}`,
+        `ankiCsv=${(window.__lastClipboardText || '').startsWith('Front,Back,Source,Evidence,Tags')}`,
+        `exportStatus=${document.getElementById('exportStatus').textContent}`
+      ].join('\n');
+    })().catch((err) => {
+      document.body.dataset.harnessDone = 'error';
+      document.getElementById('harnessResult').textContent = err.stack || String(err);
+    });
+  </script>
+</body>
+</html>

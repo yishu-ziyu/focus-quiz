@@ -414,3 +414,32 @@ Auto-updated by git hooks. Each commit appends an entry under the corresponding 
     - RELEASE_EXECUTION_PLAN.md
     - sidepanel.html
     - sidepanel.js
+
+## 2026-04-29
+
+- [manual-sync] Working snapshot
+  - Time: 2026-04-29 17:08:37 +0800
+  - Branch: main
+  - Last commit: 5f89674 feat: add markdown file export for mistakes
+  - Pending changes:
+    -  M sidepanel.html
+    -  M sidepanel.js
+    - ?? SHARE_20MIN_PRESENTATION_SCRIPT.md
+    - ?? sidepanel-logic.js
+    - ?? tests/
+
+- P1 development snapshot: question regeneration controls and export extension
+  - Added per-question controls for swap, easier, transfer-only, and open-ended self-check regeneration.
+  - Added Evidence locator support across prompt, answer reveal, mistake log, Markdown export, and Anki CSV copy.
+  - Added `sidepanel-logic.js` pure helper surface plus Node regression tests for P1 normalization and CSV escaping.
+
+- Commit: Make Focus Quiz questions adjustable without breaking the learning loop
+  - Time: 2026-04-29 17:30:06 +0800
+  - Stats: 6 files changed, 744 insertions(+), 66 deletions(-)
+  - Files:
+    - DEVELOPMENT_LOG.md
+    - sidepanel-logic.js
+    - sidepanel.html
+    - sidepanel.js
+    - tests/fixtures/sidepanel-p1-harness.html
+    - tests/p1_logic.test.js

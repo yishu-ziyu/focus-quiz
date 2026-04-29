@@ -140,6 +140,14 @@
     @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
     .option.disabled { cursor: default; }
     .option.disabled:hover { background: inherit; transform: none; }
+    .question-actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 11px; }
+    .regen-btn { font-size: 11px; color: var(--ink-soft); cursor: pointer; background: rgba(255,255,255,0.38); border: 1px solid var(--rule); border-radius: 999px; padding: 4px 8px; }
+    .regen-btn:hover { color: var(--accent); border-color: var(--rule-strong); background: var(--paper-deep); }
+    .regen-btn:disabled { cursor: default; opacity: 0.55; }
+    .open-answer { width: 100%; min-height: 82px; resize: vertical; border: 1px solid var(--rule); background: rgba(255,255,255,0.54); color: var(--ink); padding: 9px 10px; font-family: var(--serif); font-size: 13px; line-height: 1.55; margin-bottom: 8px; }
+    .open-answer:focus { outline: none; border-color: var(--accent); }
+    .open-submit { display: inline-block; padding: 6px 10px; font-size: 12px; background: var(--ink); color: var(--paper); border: none; border-radius: 2px; cursor: pointer; }
+    .open-submit:hover { background: var(--accent); }
 
     /* Explanation with slide-in */
     .explain { margin-top: 12px; padding: 12px; background: var(--wash-amber); border-left: 3px solid #9a6b22; font-size: 12px; color: #6f4615; line-height: 1.55; animation: slideDown 0.3s ease; }
@@ -230,6 +238,7 @@
       <h2>思维断裂档案</h2>
       <div class="mistake-actions">
         <button id="copyMistakes" class="export-btn">复制 Markdown</button>
+        <button id="copyAnkiCsv" class="export-btn">复制 Anki CSV</button>
         <button id="exportMistakes" class="export-btn">保存 .md</button>
         <button id="backToQuiz" class="back-btn">← 返回</button>
       </div>
@@ -241,6 +250,7 @@
   <script src="provider-presets.js"></script>
   <script src="providers.js"></script>
   <script src="learning-profile.js"></script>
+  <script src="sidepanel-logic.js"></script>
   <script src="sidepanel.js"></script>
 </body>
 </html>
